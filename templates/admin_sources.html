@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<main class="container admin-shell">
+    <div class="admin-card wide">
+        <div class="eyebrow">Admin console</div>
+        <div class="admin-header">
+            <h1>Trusted sources</h1>
+            <a class="logout-link" href="{{ url_for('admin_logout') }}">Logout</a>
+        </div>
+        <p class="intro">Only approved sources are allowed to contribute to the main feed. Human review is required before publication.</p>
+        {% if error %}<p class="error-box">{{ error }}</p>{% endif %}
+
+        <form method="post" class="source-form">
+            <div class="field-row">
+                <label>Country
+                    <select name="country">
+                        {% for key, info in countries.items() %}
+                        <option value="{{ key }}">{{ info.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>Topic
+                    <select name="topic">
+                        {% for topic in topics %}
+                        <option value="{{ topic }}">{{ topic }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+            <label>Source name
+                <input type="text" name="source_name" placeholder="e.g. The East African" required>
+            </label>
+            <div class="field-row">
+                <label>RSS feed URL
+                    <input type="url" name="feed_url" placeholder="https://example.com/rss.xml">
+                </label>
+                <label>Site URL
+                    <input type="url" name="site_url" placeholder="https://example.com" required>
+                </label>
+            </div>
+            <label>Source type
+                <select name="source_type">
+                    <option value="rss">RSS feed</option>
+                    <option value="html">HTML crawl</option>
+                </select>
+            </label>
+            <button type="submit">Approve source</button>
+        </form>
+
+        <div class="source-list">
+            <h2>Current approved sources</h2>
+            {% for source in sources %}
+            <div class="source-row">
+                <div>
+                    <strong>{{ source.source_name }}</strong>
+                    <span>{{ countries.get(source.country, {}).name or source.country }} · {{ source.topic }} · {% if source.is_active %}enabled{% else %}disabled{% endif %}</span>
+                </div>
+                <div class="row-actions">
+                    <a class="row-link" href="{{ url_for('admin_edit_source', source_id=source.id) }}">Edit</a>
+                    <form method="post" action="{{ url_for('admin_toggle_source', source_id=source.id) }}" class="inline-form">
+                        <button type="submit" class="toggle-btn">{% if source.is_active %}Disable{% else %}Enable{% endif %}</button>
+                    </form>
+                    <form method="post" action="{{ url_for('admin_delete_source', source_id=source.id) }}" class="inline-form">
+                        <button type="submit" class="delete-btn">Remove</button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <p class="empty-note">No approved sources yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+</main>
+<style>
+    .admin-shell { padding-top:40px; padding-bottom:70px; display:flex; justify-content:center; }
+    .admin-card { width:min(820px,100%); background:white; border:1px solid var(--line); border-radius:12px; padding:28px; }
+    .wide { max-width:900px; }
+    .admin-header { display:flex; justify-content:space-between; align-items:center; gap:16px; }
+    .logout-link { color:var(--teal); font-weight:700; }
+    .source-form { display:grid; gap:14px; margin-top:20px; }
+    .field-row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .source-form label { display:grid; gap:8px; font-weight:700; color:var(--ink); }
+    .source-form input, .source-form select { border:1px solid var(--line); border-radius:6px; padding:12px 13px; font:16px 'DM Sans'; }
+    .source-form button, .delete-btn { background:var(--teal); border:none; border-radius:6px; color:white; font:700 15px 'DM Sans'; padding:12px 14px; cursor:pointer; }
+    .source-list { margin-top:30px; border-top:1px solid var(--line); padding-top:20px; }
+    .source-list h2 { font:600 24px 'Space Grotesk'; margin:0 0 16px; }
+    .source-row { display:flex; justify-content:space-between; align-items:center; gap:16px; border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-bottom:12px; }
+    .source-row strong { display:block; font-size:17px; }
+    .source-row span { color:var(--muted); font-size:12px; }
+    .row-actions { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+    .inline-form { margin:0; }
+    .row-link { color:var(--teal); font-weight:700; }
+    .toggle-btn, .delete-btn { border:none; border-radius:6px; color:white; font:700 13px 'DM Sans'; padding:9px 12px; cursor:pointer; }
+    .toggle-btn { background:var(--teal); }
+    .delete-btn { background:#b63b3b; }
+    .empty-note { color:var(--muted); }
+    .error-box { background:#fff1f1; border:1px solid #efb5b5; color:#7d2222; border-radius:6px; padding:10px 12px; }
+    @media(max-width:760px) { .field-row { grid-template-columns:1fr; } .source-row { flex-direction:column; align-items:flex-start; } }
+</style>
+{% endblock %}

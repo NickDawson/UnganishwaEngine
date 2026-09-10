@@ -1,0 +1,7 @@
+beautifulsoup4
+feedparser
+Flask
+gunicorn
+psycopg2-binary
+requests
+Scrapy
