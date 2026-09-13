@@ -15,16 +15,7 @@
           >Country
           <select name="country">
             {% for key, info in countries.items() %}
-            <option
-              value="{{ key }}"
-              {%
-              if
-              key=""
-              ="source.country"
-              %}selected{%
-              endif
-              %}
-            >
+            <option value="{{ key }}" {% if key == source.country %}selected{% endif %}>
               {{ info.name }}
             </option>
             {% endfor %}
@@ -34,16 +25,7 @@
           >Topic
           <select name="topic">
             {% for topic in topics %}
-            <option
-              value="{{ topic }}"
-              {%
-              if
-              topic=""
-              ="source.topic"
-              %}selected{%
-              endif
-              %}
-            >
+            <option value="{{ topic }}" {% if topic == source.topic %}selected{% endif %}>
               {{ topic }}
             </option>
             {% endfor %}
@@ -81,28 +63,10 @@
       <label
         >Source type
         <select name="source_type">
-          <option
-            value="rss"
-            {%
-            if
-            source.source_type=""
-            ="rss"
-            %}selected{%
-            endif
-            %}
-          >
+          <option value="rss" {% if source.source_type == 'rss' %}selected{% endif %}>
             RSS feed
           </option>
-          <option
-            value="html"
-            {%
-            if
-            source.source_type=""
-            ="html"
-            %}selected{%
-            endif
-            %}
-          >
+          <option value="html" {% if source.source_type == 'html' %}selected{% endif %}>
             HTML crawl
           </option>
         </select>

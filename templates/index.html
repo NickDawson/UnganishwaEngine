@@ -6,7 +6,7 @@
       ><select
         onchange="location.href='{{ url_for('index', country=country, topic=topic) }}&language='+this.value"
       >
-        <option {% if language="" ="English" %}selected{% endif %}>
+        <option {% if language == 'English' %}selected{% endif %}>
           English
         </option>
         <option>Kiswahili</option>
@@ -18,7 +18,7 @@
         onchange="location.href='{{ url_for('index', country=country, topic=topic, language=language) }}&country='+this.value"
       >
         {% for key, info in countries.items() %}
-        <option value="{{ key }}" {% if key="" ="country" %}selected{% endif %}>
+        <option value="{{ key }}" {% if key == country %}selected{% endif %}>
           {{ info.name }} · {{ info.code }}
         </option>
         {% endfor %}
