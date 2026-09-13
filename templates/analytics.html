@@ -1,25 +1,150 @@
-{% extends 'base.html' %}
-
-{% block content %}
+{% extends 'base.html' %} {% block content %}
 <main class="container analytics-page">
-    <div class="eyebrow">Portal insights / Lasting signal</div>
-    <h1>Who is finding<br>their way here?</h1>
-    <p class="intro">A privacy-preserving view of site-wide traffic and anonymous visitors.</p>
-    <div class="stats-grid">
-        <section class="stat-card"><span>Total page views</span><strong>{{ total_visits }}</strong><small>All public pages and searches</small></section>
-        <section class="stat-card"><span>Unique users</span><strong>{{ total_visitors }}</strong><small>Anonymous browsers seen</small></section>
-        <section class="stat-card"><span>Users today</span><strong>{{ daily_unique_visitors }}</strong><small>Unique browsers today</small></section>
-        <section class="stat-card highlight"><span>Most visited region</span><strong>{% if leader %}{{ countries[leader.region].name }}{% else %}No data yet{% endif %}</strong><small>{% if leader %}{{ leader.visits }} visits{% else %}Visit the portal to begin{% endif %}</small></section>
+  <div class="eyebrow">Portal insights / Lasting signal</div>
+  <h1>Who is finding<br />their way here?</h1>
+  <p class="intro">
+    A privacy-preserving view of site-wide traffic and anonymous visitors.
+  </p>
+  <div class="stats-grid">
+    <section class="stat-card">
+      <span>Total page views</span><strong>{{ total_visits }}</strong
+      ><small>All public pages and searches</small>
+    </section>
+    <section class="stat-card">
+      <span>Unique users</span><strong>{{ total_visitors }}</strong
+      ><small>Anonymous browsers seen</small>
+    </section>
+    <section class="stat-card">
+      <span>Users today</span><strong>{{ daily_unique_visitors }}</strong
+      ><small>Unique browsers today</small>
+    </section>
+    <section class="stat-card highlight">
+      <span>Most visited region</span
+      ><strong
+        >{% if leader %}{{ countries[leader.region].name }}{% else %}No data
+        yet{% endif %}</strong
+      ><small
+        >{% if leader %}{{ leader.visits }} visits{% else %}Visit the portal to
+        begin{% endif %}</small
+      >
+    </section>
+  </div>
+  <div class="feed-head">
+    <h2>Region activity</h2>
+    <span class="updated">Based on selected country</span>
+  </div>
+  <div class="region-list">
+    {% for row in stats %}
+    <div class="region-row">
+      <div>
+        <strong>{{ countries[row.region].name }}</strong
+        ><span>{{ row.visitors }} anonymous visitors</span>
+      </div>
+      <div class="bar-track">
+        <i
+          style="width:{{ ((row.visits / (stats[0].visits or 1)) * 100)|round|int }}%"
+        ></i>
+      </div>
+      <b>{{ row.visits }}</b>
     </div>
-    <div class="feed-head"><h2>Region activity</h2><span class="updated">Based on selected country</span></div>
-    <div class="region-list">
-        {% for row in stats %}
-        <div class="region-row"><div><strong>{{ countries[row.region].name }}</strong><span>{{ row.visitors }} anonymous visitors</span></div><div class="bar-track"><i style="width:{{ ((row.visits / (stats[0].visits or 1)) * 100)|round|int }}%"></i></div><b>{{ row.visits }}</b></div>
-        {% endfor %}
-    </div>
-    <p class="privacy-note">Privacy note: Unganishwa stores an anonymous visitor cookie and region totals only. It does not store IP addresses or personal identities.</p>
+    {% endfor %}
+  </div>
+  <p class="privacy-note">
+    Privacy note: Unganishwa stores an anonymous visitor cookie and region
+    totals only. It does not store IP addresses or personal identities.
+  </p>
 </main>
 <style>
-    .analytics-page { padding-top:39px; padding-bottom:75px; } .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:17px; margin:37px 0 48px; } .stat-card { background:var(--white); border:1px solid var(--line); border-radius:6px; padding:24px; min-height:150px; display:flex; flex-direction:column; } .stat-card.highlight { background:#e4f1eb; border-color:#b9d9ce; } .stat-card span,.stat-card small { color:var(--muted); font-size:12px; } .stat-card strong { font:600 31px 'Space Grotesk'; margin:auto 0 4px; } .region-list { padding-top:12px; } .region-row { display:grid; grid-template-columns:190px 1fr 45px; gap:20px; align-items:center; padding:17px 0; border-bottom:1px solid var(--line); } .region-row div:first-child { display:flex; flex-direction:column; gap:4px; } .region-row span { color:var(--muted); font-size:12px; } .region-row b { text-align:right; font:600 18px 'Space Grotesk'; } .bar-track { height:10px; background:#e2ebe6; border-radius:10px; overflow:hidden; } .bar-track i { display:block; height:100%; background:var(--teal); border-radius:10px; } .privacy-note { color:var(--muted); font-size:12px; margin-top:30px; } @media(max-width:900px) { .stats-grid { grid-template-columns:repeat(2,1fr); } } @media(max-width:760px) { .analytics-page { padding-top:28px; } .stats-grid { grid-template-columns:1fr; margin:28px 0 38px; } .region-row { grid-template-columns:130px 1fr 30px; gap:10px; } }
+  .analytics-page {
+    padding-top: 39px;
+    padding-bottom: 75px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 17px;
+    margin: 37px 0 48px;
+  }
+  .stat-card {
+    background: var(--white);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 24px;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+  }
+  .stat-card.highlight {
+    background: #e4f1eb;
+    border-color: #b9d9ce;
+  }
+  .stat-card span,
+  .stat-card small {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .stat-card strong {
+    font: 600 31px "Space Grotesk";
+    margin: auto 0 4px;
+  }
+  .region-list {
+    padding-top: 12px;
+  }
+  .region-row {
+    display: grid;
+    grid-template-columns: 190px 1fr 45px;
+    gap: 20px;
+    align-items: center;
+    padding: 17px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .region-row div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .region-row span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .region-row b {
+    text-align: right;
+    font: 600 18px "Space Grotesk";
+  }
+  .bar-track {
+    height: 10px;
+    background: #e2ebe6;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .bar-track i {
+    display: block;
+    height: 100%;
+    background: var(--teal);
+    border-radius: 10px;
+  }
+  .privacy-note {
+    color: var(--muted);
+    font-size: 12px;
+    margin-top: 30px;
+  }
+  @media (max-width: 900px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 760px) {
+    .analytics-page {
+      padding-top: 28px;
+    }
+    .stats-grid {
+      grid-template-columns: 1fr;
+      margin: 28px 0 38px;
+    }
+    .region-row {
+      grid-template-columns: 130px 1fr 30px;
+      gap: 10px;
+    }
+  }
 </style>
 {% endblock %}

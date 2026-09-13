@@ -1,12 +1,143 @@
-{% extends 'base.html' %}
-
-{% block content %}
-<div class="controls"><div class="container">
-    <div class="control-row"><span class="label">Reading in</span><select onchange="location.href='{{ url_for('index', country=country, topic=topic) }}&language='+this.value"><option {% if language == 'English' %}selected{% endif %}>English</option><option>Kiswahili</option><option>Kinyarwanda</option><option>Luganda</option><option>Kirundi</option></select><span class="label">Watching</span><select onchange="location.href='{{ url_for('index', country=country, topic=topic, language=language) }}&country='+this.value">{% for key, info in countries.items() %}<option value="{{ key }}" {% if key == country %}selected{% endif %}>{{ info.name }} · {{ info.code }}</option>{% endfor %}</select></div>
-    <nav class="topics" aria-label="Topics">{% for item in topics %}<a class="topic {% if item == topic %}active{% endif %}" href="{{ url_for('index', country=country, topic=item, language=language) }}">{{ item }}</a>{% endfor %}<details><summary class="topic">+ Customize</summary><form class="preference-form" action="{{ url_for('index') }}" method="get"><input type="hidden" name="country" value="{{ country }}"><input type="hidden" name="language" value="{{ language }}"><strong>Your daily mix</strong>{% for item in topics[1:] %}<label><input type="checkbox" name="interest" value="{{ item }}" {% if item in interests %}checked{% endif %}> {{ item }}</label>{% endfor %}<button type="submit">Save preferences</button></form></details></nav>
-</div></div>
-<main class="container"><div class="eyebrow">{{ country_info.name }} / {{ language }}</div><h1>Know what matters<br>where you are.</h1><p class="intro">A considered daily briefing from local voices, trusted newsrooms and the wider world.</p>
-    <div class="feed-head"><h2>{{ topic }}</h2><span class="updated">Updated {{ updated }} UTC · {{ articles|length }} stories</span></div>
-    {% if articles %}<div class="grid">{% for article in articles %}<a class="article" href="{{ article.link|default('#') }}" target="_blank" rel="noopener noreferrer"><div class="meta"><span>{{ article.topic|default(topic) }}</span><span>{{ article.published }}</span></div><h3>{{ article.title }}</h3><p class="summary">{{ article.summary|striptags|truncate(190) }}</p><div class="source">From <strong>{{ article.source }}</strong><span class="arrow">↗</span></div></a>{% if loop.index is divisibleby 5 %}<div class="ad-slot" aria-label="Advertisement">{% if google_ads_client and google_ads_slot %}<ins class="adsbygoogle" data-ad-client="{{ google_ads_client }}" data-ad-slot="{{ google_ads_slot }}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle = window.adsbygoogle || []).push({});</script>{% else %}Advertisement{% endif %}</div>{% endif %}{% endfor %}</div>{% else %}<p class="empty">No stories in this topic yet. Try Top Stories or another topic.</p>{% endif %}
+{% extends 'base.html' %} {% block content %}
+<div class="controls">
+  <div class="container">
+    <div class="control-row">
+      <span class="label">Reading in</span
+      ><select
+        onchange="location.href='{{ url_for('index', country=country, topic=topic) }}&language='+this.value"
+      >
+        <option {% if language="" ="English" %}selected{% endif %}>
+          English
+        </option>
+        <option>Kiswahili</option>
+        <option>Kinyarwanda</option>
+        <option>Luganda</option>
+        <option>Kirundi</option></select
+      ><span class="label">Watching</span
+      ><select
+        onchange="location.href='{{ url_for('index', country=country, topic=topic, language=language) }}&country='+this.value"
+      >
+        {% for key, info in countries.items() %}
+        <option value="{{ key }}" {% if key="" ="country" %}selected{% endif %}>
+          {{ info.name }} · {{ info.code }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <nav class="topics" aria-label="Topics">
+      {% for item in topics %}<a
+        class="topic {% if item == topic %}active{% endif %}"
+        href="{{ url_for('index', country=country, topic=item, language=language) }}"
+        >{{ item }}</a
+      >{% endfor %}
+      <details>
+        <summary class="topic">+ Customize</summary>
+        <form
+          class="preference-form"
+          action="{{ url_for('index') }}"
+          method="get"
+        >
+          <input type="hidden" name="country" value="{{ country }}" /><input
+            type="hidden"
+            name="language"
+            value="{{ language }}"
+          /><strong>Your daily mix</strong>{% for item in topics[1:] %}<label
+            ><input
+              type="checkbox"
+              name="interest"
+              value="{{ item }}"
+              {%
+              if
+              item
+              in
+              interests
+              %}checked{%
+              endif
+              %}
+            />
+            {{ item }}</label
+          >{% endfor %}<button type="submit">Save preferences</button>
+        </form>
+      </details>
+    </nav>
+  </div>
+</div>
+<main class="container">
+  <section class="hero">
+    <div class="eyebrow">{{ country_info.name }} / {{ language }}</div>
+    <h1>Know what matters<br />where you are.</h1>
+    <p class="intro">
+      A considered daily briefing from local voices, trusted newsrooms and the
+      wider world.
+    </p>
+  </section>
+  <div class="feed-head">
+    <h2>{{ topic }}</h2>
+    <span class="updated"
+      >Updated {{ updated }} UTC · {{ articles|length }} stories</span
+    >
+  </div>
+  {% if articles %}
+  <div class="grid">
+    {% for article in articles %}<a
+      class="article"
+      href="{{ article.link|default('#') }}"
+      target="_blank"
+      rel="noopener noreferrer"
+      ><div class="meta">
+        <span>{{ article.topic|default(topic) }}</span
+        ><span>{{ article.published }}</span>
+      </div>
+      <h3>{{ article.title }}</h3>
+      <p class="summary">{{ article.summary|striptags|truncate(190) }}</p>
+      <div class="source">
+        From <strong>{{ article.source }}</strong><span class="arrow">↗</span>
+      </div></a
+    >{% if loop.index is divisibleby 5 %}
+    <div class="ad-slot" aria-label="Advertisement">
+      {% if google_ads_client and google_ads_slot %}<ins
+        class="adsbygoogle"
+        data-ad-client="{{ google_ads_client }}"
+        data-ad-slot="{{ google_ads_slot }}"
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      ></ins>
+      <script>
+        (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+      {% else %}Advertisement{% endif %}
+    </div>
+    {% endif %}{% endfor %}
+  </div>
+  {% else %}
+  <p class="empty">
+    No stories in this topic yet. Try Top Stories or another topic.
+  </p>
+  {% endif %}
+  <section class="app-promo" id="download-app">
+    <div>
+      <div class="eyebrow" style="color: #f5c85b">Unganishwa for Android</div>
+      <h2>East Africa's stories, wherever your day takes you.</h2>
+      <p>
+        Choose your country and topics, save the stories that matter, and stay
+        close to trusted local voices.
+      </p>
+      <a
+        class="download-button"
+        href="{{ url_for('static', filename='downloads/unganishwa.apk') }}"
+        download
+        >↓ Download Android APK</a
+      >
+    </div>
+    <div class="phone" aria-hidden="true">
+      <div class="phone-screen">
+        <div class="phone-brand">unganishwa.</div>
+        <div class="phone-line"></div>
+        <div class="phone-line"></div>
+        <div class="phone-line"></div>
+        <div class="phone-line"></div>
+      </div>
+    </div>
+  </section>
 </main>
 {% endblock %}

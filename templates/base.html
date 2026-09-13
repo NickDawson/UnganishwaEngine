@@ -1,57 +1,688 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Unganishwa | Your region, your world</title>
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-        <style>
-            :root { --ink:#172326; --muted:#6d7b7c; --line:#dce6e2; --paper:#f5f8f5; --white:#fff; --teal:#087f73; --coral:#ec765f; --yellow:#f5c85b; }
-            * { box-sizing:border-box; } body { margin:0; color:var(--ink); background:var(--paper); font-family:'DM Sans',sans-serif; }
-            a { color:inherit; text-decoration:none; } .topbar { background:#143b3b; color:#edf5ec; }
-            .nav, .container { max-width:1180px; margin:auto; padding-left:28px; padding-right:28px; }
-            .nav { height:74px; display:flex; align-items:center; gap:30px; } .brand { font:700 26px 'Space Grotesk'; letter-spacing:-1px; }
-            .brand span { color:var(--yellow); } .tagline { color:#a9c5bc; font-size:13px; border-left:1px solid #436461; padding-left:26px; } .analytics-link { color:#d5e8df; font-size:13px; margin-left:auto; } .analytics-link:hover { color:var(--yellow); }
-            .search { display:flex; background:#285351; border-radius:5px; padding:4px; } .search input { background:transparent; border:0; color:white; padding:9px 12px; width:190px; outline:0; } .search input::placeholder{color:#b7cfca}
-            .search button { border:0; background:var(--yellow); color:var(--ink); font-weight:700; padding:0 14px; border-radius:3px; cursor:pointer; }
-            .controls { background:var(--white); border-bottom:1px solid var(--line); } .control-row { display:flex; align-items:center; gap:11px; min-height:61px; overflow:auto; }
-            .label { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-right:3px; white-space:nowrap; }
-            select, .topic { border:1px solid var(--line); background:white; border-radius:4px; padding:9px 12px; font:600 13px 'DM Sans'; color:var(--ink); white-space:nowrap; }
-            .topic.active { background:var(--teal); border-color:var(--teal); color:white; } .topics { display:flex; gap:8px; padding:12px 0 14px; overflow:auto; }
-            details { position:relative; } summary { cursor:pointer; list-style:none; } .preference-form { position:absolute; z-index:2; top:44px; right:0; width:220px; display:grid; gap:9px; padding:16px; background:white; border:1px solid var(--line); border-radius:5px; box-shadow:0 12px 25px #153b3b1c; font-size:12px; } .preference-form strong { font-family:'Space Grotesk'; font-size:15px; } .preference-form button { background:var(--teal); color:white; border:0; border-radius:3px; padding:9px; font-weight:700; cursor:pointer; }
-            main { padding-top:39px; padding-bottom:70px; } .eyebrow { text-transform:uppercase; letter-spacing:2px; color:var(--teal); font-size:11px; font-weight:700; }
-            h1 { font:600 clamp(32px,5vw,54px) 'Space Grotesk'; letter-spacing:-2px; line-height:1; margin:11px 0 10px; } .intro { color:var(--muted); margin:0 0 28px; }
-            .feed-head { display:flex; justify-content:space-between; align-items:end; border-bottom:2px solid var(--ink); padding-bottom:13px; margin-top:32px; } h2 { font:600 25px 'Space Grotesk'; margin:0; } .updated { color:var(--muted); font-size:12px; }
-            .grid { display:grid; grid-template-columns:repeat(3,1fr); gap:17px; padding-top:19px; } .article { background:var(--white); border:1px solid var(--line); border-radius:6px; padding:22px; min-height:245px; display:flex; flex-direction:column; transition:transform .2s, box-shadow .2s; }
-            .ad-slot { grid-column:1 / -1; min-height:120px; display:flex; align-items:center; justify-content:center; border-top:1px solid var(--line); border-bottom:1px solid var(--line); color:var(--muted); font-size:10px; letter-spacing:1px; text-transform:uppercase; }
-            .ad-slot ins { width:100%; min-height:100px; }
-            .article:hover { transform:translateY(-3px); box-shadow:0 10px 22px #153b3b12; } .article:first-child { grid-column:span 2; background:#e4f1eb; border-color:#b9d9ce; }
-            .meta { display:flex; justify-content:space-between; color:var(--teal); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.8px; } .article h3 { font:600 21px/1.16 'Space Grotesk'; margin:22px 0 12px; } .article:first-child h3 { font-size:29px; max-width:650px; }
-            .summary { color:#526365; line-height:1.55; font-size:14px; margin:0; } .source { margin-top:auto; padding-top:22px; color:var(--muted); font-size:12px; } .source strong { color:var(--ink); } .arrow { float:right; color:var(--teal); font-size:18px; }
-            .empty { padding:40px 0; color:var(--muted); } footer { background:#143b3b; color:#a9c5bc; padding:25px 0; font-size:12px; } footer strong { color:white; font-family:'Space Grotesk'; font-size:17px; } .footer-grid { display:flex; justify-content:space-between; gap:30px; } .footer-actions { display:flex; align-items:center; justify-content:flex-end; gap:14px; flex-wrap:wrap; } .sponsor-link,.affiliate-link { color:var(--yellow); font-weight:700; } .subscribe-form { display:grid; gap:6px; } .subscribe-form label { color:#d5e8df; font-size:11px; } .subscribe-form div { display:flex; gap:5px; } .subscribe-form input { width:180px; border:0; border-radius:3px; padding:8px 9px; font:12px 'DM Sans'; } .subscribe-form button { border:0; border-radius:3px; background:var(--yellow); color:var(--ink); padding:8px 10px; font:700 12px 'DM Sans'; cursor:pointer; } .subscription-status { color:#d5e8df; }
-            @media(max-width:760px) { .nav { height:auto; padding-top:18px; padding-bottom:16px; flex-wrap:wrap; gap:12px; } .tagline { display:none; } .analytics-link { margin-left:auto; } .search { order:3; width:100%; margin:0; } .search input{width:100%;} .control-row{padding-top:8px;padding-bottom:8px;} .grid{grid-template-columns:1fr;} .article:first-child{grid-column:auto;} .article:first-child h3{font-size:24px;} .ad-slot{min-height:96px;} main{padding-top:28px;} .feed-head{align-items:start; gap:15px; flex-direction:column;} .footer-grid { flex-direction:column; gap:18px; } .footer-actions { justify-content:flex-start; align-items:flex-start; flex-direction:column; } .subscribe-form { width:100%; } .subscribe-form div { width:100%; } .subscribe-form input { flex:1; width:auto; } }
-        </style>
-        {% if google_ads_client %}<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ google_ads_client }}" crossorigin="anonymous"></script>{% endif %}
-    </head>
-    <body>
-        <header class="topbar"><div class="nav">
-            <a class="brand" href="{{ url_for('index') }}">unganishwa<span>.</span></a>
-            <div class="tagline">Your region, your world.</div>
-            <a class="analytics-link" href="{{ analytics_url }}">Insights</a>
-            <form action="{{ url_for('search')}}" method="GET">
-                <div class="search"><input type="text" name="q" placeholder="Search the region" aria-label="Search the region"><button type="submit">Search</button></div>
-            </form>
-        </div></header>
-        {% block content %}{% endblock %}
-        <footer><div class="container footer-grid">
-            <div><strong>unganishwa.</strong><br>Independent context for East Africa, in the language you choose.</div>
-            <div class="footer-actions">
-                {% if sponsor_name and sponsor_url %}<a class="sponsor-link" href="{{ sponsor_url }}" target="_blank" rel="sponsored noopener">Supported by {{ sponsor_name }}</a>{% endif %}
-                {% if affiliate_url %}<a class="affiliate-link" href="{{ affiliate_url }}" target="_blank" rel="sponsored nofollow noopener">{{ affiliate_label }}</a>{% endif %}
-                <form class="subscribe-form" action="{{ url_for('subscribe') }}" method="post"><label for="footer-email">Get the daily briefing</label><div><input id="footer-email" type="email" name="email" placeholder="you@example.com" required><button type="submit">Subscribe</button></div></form>
-                {% if request.args.get('subscribed') == 'success' %}<small class="subscription-status">You are subscribed.</small>{% elif request.args.get('subscribed') == 'invalid' %}<small class="subscription-status">Enter a valid email address.</small>{% endif %}
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Unganishwa | Your region, your world</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #172326;
+        --muted: #6d7b7c;
+        --line: #dce6e2;
+        --paper: #f5f8f5;
+        --white: #fff;
+        --teal: #087f73;
+        --coral: #ec765f;
+        --yellow: #f5c85b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        max-width: 100%;
+        overflow-x: hidden;
+      }
+      body {
+        margin: 0;
+        color: var(--ink);
+        background: var(--paper);
+        font-family: "DM Sans", sans-serif;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .topbar {
+        background: #103b38;
+        color: #edf5ec;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        box-shadow: 0 8px 30px #0d2e2b1a;
+      }
+      .nav,
+      .container {
+        max-width: 1180px;
+        margin: auto;
+        padding-left: 28px;
+        padding-right: 28px;
+      }
+      .nav {
+        height: 74px;
+        display: flex;
+        align-items: center;
+        gap: 30px;
+      }
+      .brand {
+        font: 700 26px "Space Grotesk";
+        letter-spacing: -1px;
+      }
+      .brand span {
+        color: var(--yellow);
+      }
+      .tagline {
+        color: #a9c5bc;
+        font-size: 13px;
+        border-left: 1px solid #436461;
+        padding-left: 26px;
+      }
+      .analytics-link {
+        color: #d5e8df;
+        font-size: 13px;
+        margin-left: auto;
+      }
+      .analytics-link:hover {
+        color: var(--yellow);
+      }
+      .nav-download {
+        border: 1px solid #5f7d78;
+        border-radius: 999px;
+        padding: 9px 14px;
+        color: white;
+        font-size: 12px;
+        font-weight: 700;
+        transition: 0.2s ease;
+        white-space: nowrap;
+      }
+      .nav-download:hover {
+        color: #143b3b;
+        background: var(--yellow);
+        border-color: var(--yellow);
+        transform: translateY(-1px);
+      }
+      .search {
+        display: flex;
+        background: #285351;
+        border-radius: 5px;
+        padding: 4px;
+      }
+      .search input {
+        background: transparent;
+        border: 0;
+        color: white;
+        padding: 9px 12px;
+        width: 190px;
+        outline: 0;
+      }
+      .search input::placeholder {
+        color: #b7cfca;
+      }
+      .search button {
+        border: 0;
+        background: var(--yellow);
+        color: var(--ink);
+        font-weight: 700;
+        padding: 0 14px;
+        border-radius: 3px;
+        cursor: pointer;
+      }
+      .controls {
+        background: var(--white);
+        border-bottom: 1px solid var(--line);
+      }
+      .control-row {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        min-height: 61px;
+        overflow: auto;
+      }
+      .label {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        font-weight: 700;
+        margin-right: 3px;
+        white-space: nowrap;
+      }
+      select,
+      .topic {
+        border: 1px solid var(--line);
+        background: white;
+        border-radius: 4px;
+        padding: 9px 12px;
+        font: 600 13px "DM Sans";
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .topic.active {
+        background: var(--teal);
+        border-color: var(--teal);
+        color: white;
+      }
+      .topics {
+        display: flex;
+        gap: 8px;
+        padding: 12px 0 14px;
+        overflow: auto;
+      }
+      details {
+        position: relative;
+      }
+      summary {
+        cursor: pointer;
+        list-style: none;
+      }
+      .preference-form {
+        position: absolute;
+        z-index: 2;
+        top: 44px;
+        right: 0;
+        width: 220px;
+        display: grid;
+        gap: 9px;
+        padding: 16px;
+        background: white;
+        border: 1px solid var(--line);
+        border-radius: 5px;
+        box-shadow: 0 12px 25px #153b3b1c;
+        font-size: 12px;
+      }
+      .preference-form strong {
+        font-family: "Space Grotesk";
+        font-size: 15px;
+      }
+      .preference-form button {
+        background: var(--teal);
+        color: white;
+        border: 0;
+        border-radius: 3px;
+        padding: 9px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      main {
+        padding-top: 39px;
+        padding-bottom: 70px;
+      }
+      .eyebrow {
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: var(--teal);
+        font-size: 11px;
+        font-weight: 700;
+      }
+      h1 {
+        font: 600 clamp(32px, 5vw, 54px) "Space Grotesk";
+        letter-spacing: -2px;
+        line-height: 1;
+        margin: 11px 0 10px;
+      }
+      .intro {
+        color: var(--muted);
+        margin: 0 0 28px;
+      }
+      .hero {
+        position: relative;
+        overflow: hidden;
+        background: linear-gradient(120deg, #e0f0e9, #f7f2df);
+        border: 1px solid #cfe0d8;
+        border-radius: 22px;
+        padding: clamp(28px, 5vw, 58px);
+        box-shadow: 0 24px 60px #143b3b12;
+      }
+      .hero:after {
+        content: "";
+        position: absolute;
+        width: 300px;
+        height: 300px;
+        border-radius: 50%;
+        background: #f5c85b55;
+        right: -100px;
+        top: -140px;
+      }
+      .hero .intro {
+        max-width: 600px;
+        font-size: 16px;
+        line-height: 1.7;
+        margin-bottom: 0;
+      }
+      .feed-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: end;
+        border-bottom: 2px solid var(--ink);
+        padding-bottom: 13px;
+        margin-top: 32px;
+      }
+      h2 {
+        font: 600 25px "Space Grotesk";
+        margin: 0;
+      }
+      .updated {
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 17px;
+        padding-top: 19px;
+      }
+      .article {
+        min-width: 0;
+        overflow-wrap: anywhere;
+        background: var(--white);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 22px;
+        min-height: 245px;
+        display: flex;
+        flex-direction: column;
+        transition:
+          transform 0.2s,
+          box-shadow 0.2s;
+      }
+      .ad-slot {
+        grid-column: 1 / -1;
+        min-height: 120px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-top: 1px solid var(--line);
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 10px;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+      }
+      .ad-slot ins {
+        width: 100%;
+        min-height: 100px;
+      }
+      .article:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 16px 34px #153b3b18;
+        border-color: #b7d3ca;
+      }
+      .article:first-child {
+        grid-column: span 2;
+        background: #e4f1eb;
+        border-color: #b9d9ce;
+      }
+      .meta {
+        display: flex;
+        justify-content: space-between;
+        color: var(--teal);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+      }
+      .article h3 {
+        font: 600 21px/1.16 "Space Grotesk";
+        margin: 22px 0 12px;
+      }
+      .article:first-child h3 {
+        font-size: 29px;
+        max-width: 650px;
+      }
+      .summary {
+        color: #526365;
+        line-height: 1.55;
+        font-size: 14px;
+        margin: 0;
+      }
+      .source {
+        margin-top: auto;
+        padding-top: 22px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+      .source strong {
+        color: var(--ink);
+      }
+      .arrow {
+        float: right;
+        color: var(--teal);
+        font-size: 18px;
+      }
+      .empty {
+        padding: 40px 0;
+        color: var(--muted);
+      }
+      footer {
+        background: #143b3b;
+        color: #a9c5bc;
+        padding: 25px 0;
+        font-size: 12px;
+      }
+      footer strong {
+        color: white;
+        font-family: "Space Grotesk";
+        font-size: 17px;
+      }
+      .footer-grid {
+        display: flex;
+        justify-content: space-between;
+        gap: 30px;
+      }
+      .footer-actions {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+      .sponsor-link,
+      .affiliate-link {
+        color: var(--yellow);
+        font-weight: 700;
+      }
+      .subscribe-form {
+        display: grid;
+        gap: 6px;
+      }
+      .subscribe-form label {
+        color: #d5e8df;
+        font-size: 11px;
+      }
+      .subscribe-form div {
+        display: flex;
+        gap: 5px;
+      }
+      .subscribe-form input {
+        width: 180px;
+        border: 0;
+        border-radius: 3px;
+        padding: 8px 9px;
+        font: 12px "DM Sans";
+      }
+      .subscribe-form button {
+        border: 0;
+        border-radius: 3px;
+        background: var(--yellow);
+        color: var(--ink);
+        padding: 8px 10px;
+        font: 700 12px "DM Sans";
+        cursor: pointer;
+      }
+      .subscription-status {
+        color: #d5e8df;
+      }
+      .app-promo {
+        margin: 35px 0 0;
+        padding: clamp(28px, 5vw, 54px);
+        border-radius: 22px;
+        background: linear-gradient(135deg, #113d3a, #086f66);
+        color: white;
+        display: grid;
+        grid-template-columns: 1.4fr 0.6fr;
+        gap: 36px;
+        align-items: center;
+        overflow: hidden;
+        position: relative;
+      }
+      .app-promo:before {
+        content: "";
+        position: absolute;
+        width: 240px;
+        height: 240px;
+        border: 55px solid #ffffff0b;
+        border-radius: 50%;
+        right: -70px;
+        bottom: -100px;
+      }
+      .app-promo h2 {
+        font-size: clamp(28px, 4vw, 43px);
+        line-height: 1.05;
+        letter-spacing: -1.5px;
+        max-width: 620px;
+      }
+      .app-promo p {
+        color: #c4ddd6;
+        line-height: 1.7;
+        max-width: 580px;
+      }
+      .download-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 20px;
+        margin-top: 8px;
+        border-radius: 999px;
+        background: var(--yellow);
+        color: #143b3b;
+        font-weight: 800;
+        box-shadow: 0 10px 24px #071f1d50;
+        transition: 0.2s ease;
+      }
+      .download-button:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 30px #071f1d60;
+      }
+      .phone {
+        width: 180px;
+        height: 290px;
+        justify-self: center;
+        padding: 10px;
+        border: 2px solid #ffffff66;
+        border-radius: 30px;
+        background: #0a2927;
+        transform: rotate(5deg);
+        box-shadow: 0 24px 45px #06181780;
+      }
+      .phone-screen {
+        height: 100%;
+        border-radius: 21px;
+        padding: 20px 14px;
+        background: linear-gradient(#e0f0e9, #fff);
+        color: #173532;
+      }
+      .phone-brand {
+        font: 700 18px "Space Grotesk";
+      }
+      .phone-line {
+        height: 45px;
+        margin-top: 13px;
+        border-radius: 9px;
+        background: white;
+        box-shadow: 0 3px 10px #143b3b14;
+      }
+      .reveal {
+        opacity: 0;
+        transform: translateY(22px);
+        transition:
+          opacity 0.65s ease,
+          transform 0.65s ease;
+      }
+      .reveal.visible {
+        opacity: 1;
+        transform: none;
+      }
+      @media (max-width: 760px) {
+        .nav {
+          height: auto;
+          padding-top: 18px;
+          padding-bottom: 16px;
+          flex-wrap: wrap;
+          gap: 12px;
+        }
+        .tagline,
+        .analytics-link {
+          display: none;
+        }
+        .nav-download {
+          margin-left: auto;
+        }
+        .search {
+          order: 3;
+          width: 100%;
+          margin: 0;
+        }
+        .search input {
+          width: 100%;
+        }
+        .control-row {
+          padding-top: 8px;
+          padding-bottom: 8px;
+        }
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .article:first-child {
+          grid-column: auto;
+        }
+        .article:first-child h3 {
+          font-size: 24px;
+        }
+        .ad-slot {
+          min-height: 96px;
+        }
+        main {
+          padding-top: 18px;
+        }
+        .hero {
+          border-radius: 16px;
+        }
+        .feed-head {
+          align-items: start;
+          gap: 15px;
+          flex-direction: column;
+        }
+        .app-promo {
+          grid-template-columns: 1fr;
+        }
+        .phone {
+          display: none;
+        }
+        .footer-grid {
+          flex-direction: column;
+          gap: 18px;
+        }
+        .footer-actions {
+          justify-content: flex-start;
+          align-items: flex-start;
+          flex-direction: column;
+        }
+        .subscribe-form {
+          width: 100%;
+        }
+        .subscribe-form div {
+          width: 100%;
+        }
+        .subscribe-form input {
+          flex: 1;
+          width: auto;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *:before,
+        *:after {
+          scroll-behavior: auto !important;
+          transition: none !important;
+          animation: none !important;
+        }
+        .reveal {
+          opacity: 1;
+          transform: none;
+        }
+      }
+    </style>
+    {% if google_ads_client %}
+    <script
+      async
+      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client={{ google_ads_client }}"
+      crossorigin="anonymous"
+    ></script>
+    {% endif %}
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="nav">
+        <a class="brand" href="{{ url_for('index') }}"
+          >unganishwa<span>.</span></a
+        >
+        <div class="tagline">Your region, your world.</div>
+        <a class="analytics-link" href="{{ analytics_url }}">Insights</a>
+        <a class="nav-download" href="#download-app">Get the app</a>
+        <form action="{{ url_for('search')}}" method="GET">
+          <div class="search">
+            <input
+              type="text"
+              name="q"
+              placeholder="Search the region"
+              aria-label="Search the region"
+            /><button type="submit">Search</button>
+          </div>
+        </form>
+      </div>
+    </header>
+    {% block content %}{% endblock %}
+    <footer>
+      <div class="container footer-grid">
+        <div>
+          <strong>unganishwa.</strong><br />Independent context for East Africa,
+          in the language you choose.
+        </div>
+        <div class="footer-actions">
+          {% if sponsor_name and sponsor_url %}<a
+            class="sponsor-link"
+            href="{{ sponsor_url }}"
+            target="_blank"
+            rel="sponsored noopener"
+            >Supported by {{ sponsor_name }}</a
+          >{% endif %} {% if affiliate_url %}<a
+            class="affiliate-link"
+            href="{{ affiliate_url }}"
+            target="_blank"
+            rel="sponsored nofollow noopener"
+            >{{ affiliate_label }}</a
+          >{% endif %}
+          <form
+            class="subscribe-form"
+            action="{{ url_for('subscribe') }}"
+            method="post"
+          >
+            <label for="footer-email">Get the daily briefing</label>
+            <div>
+              <input
+                id="footer-email"
+                type="email"
+                name="email"
+                placeholder="you@example.com"
+                required
+              /><button type="submit">Subscribe</button>
             </div>
-        </div></footer>
-    </body>
+          </form>
+          {% if request.args.get('subscribed') == 'success' %}<small
+            class="subscription-status"
+            >You are subscribed.</small
+          >{% elif request.args.get('subscribed') == 'invalid' %}<small
+            class="subscription-status"
+            >Enter a valid email address.</small
+          >{% endif %}
+        </div>
+      </div>
+    </footer>
+    <script>
+      document
+        .querySelectorAll(".article,.app-promo")
+        .forEach((el) => el.classList.add("reveal"));
+      const observer = new IntersectionObserver(
+        (entries) =>
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("visible");
+              observer.unobserve(entry.target);
+            }
+          }),
+        { threshold: 0.08 },
+      );
+      document
+        .querySelectorAll(".reveal")
+        .forEach((el) => observer.observe(el));
+    </script>
+  </body>
 </html>
