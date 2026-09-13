@@ -1,251 +1,45 @@
-{% extends 'base.html' %} {% block content %}
-<main class="container admin-shell">
-  <div class="admin-card wide">
-    <div class="eyebrow">Admin console</div>
-    <div class="admin-header">
-      <h1>Trusted sources</h1>
-      <a class="logout-link" href="{{ url_for('admin_logout') }}">Logout</a>
-    </div>
-    <p class="intro">
-      Only approved sources are allowed to contribute to the main feed. Human
-      review is required before publication.
-    </p>
-    {% if error %}
-    <p class="error-box">{{ error }}</p>
-    {% endif %}
-
-    <form method="post" class="source-form">
-      <div class="field-row">
-        <label
-          >Country
-          <select name="country">
-            {% for key, info in countries.items() %}
-            <option value="{{ key }}">{{ info.name }}</option>
-            {% endfor %}
-          </select>
-        </label>
-        <label
-          >Topic
-          <select name="topic">
-            {% for topic in topics %}
-            <option value="{{ topic }}">{{ topic }}</option>
-            {% endfor %}
-          </select>
-        </label>
+{% extends 'base.html' %}
+{% block content %}
+<main class="container console-shell">
+  <header class="console-head">
+    <div><div class="eyebrow">Admin console</div><h1>Source network</h1><p>Curate the publishers that power Unganishwa's regional briefings.</p></div>
+    <div class="console-actions"><a href="{{ url_for('analytics') }}">View insights</a><a class="logout-link" href="{{ url_for('admin_logout') }}">Log out</a></div>
+  </header>
+  <section class="summary-grid">
+    <div class="summary-card"><span>Total sources</span><strong>{{ sources|length }}</strong><small>Across East Africa</small></div>
+    <div class="summary-card"><span>Active</span><strong>{{ sources|selectattr('is_active')|list|length }}</strong><small>Currently feeding stories</small></div>
+    <div class="summary-card"><span>Countries</span><strong>{{ countries|length }}</strong><small>Regional coverage</small></div>
+  </section>
+  {% if error %}<div class="notice error-box" role="alert"><span>!</span>{{ error }}</div>{% endif %}
+  <div class="console-grid">
+    <section class="console-card add-card">
+      <div class="section-title"><span class="section-icon">+</span><div><h2>Add a trusted source</h2><p>RSS is preferred; HTML crawl is available as a fallback.</p></div></div>
+      <form method="post" class="source-form">
+        <div class="field-row"><label>Country<select name="country">{% for key, info in countries.items() %}<option value="{{ key }}">{{ info.name }}</option>{% endfor %}</select></label><label>Topic<select name="topic">{% for topic in topics %}<option value="{{ topic }}">{{ topic }}</option>{% endfor %}</select></label></div>
+        <label>Source name<input type="text" name="source_name" placeholder="e.g. Michuzi Blog" required></label>
+        <label>RSS feed URL<input type="url" name="feed_url" placeholder="https://example.com/feed.xml"></label>
+        <label>Website URL<input type="url" name="site_url" placeholder="https://example.com"></label>
+        <label>Ingestion method<select name="source_type"><option value="rss">RSS feed — recommended</option><option value="html">HTML crawl</option></select></label>
+        <button type="submit" class="primary-action">Approve and add source <span>→</span></button>
+      </form>
+    </section>
+    <section class="console-card list-card">
+      <div class="list-toolbar"><div><h2>Approved sources</h2><p>Enable, edit or remove publishers.</p></div><label class="source-search"><span>⌕</span><input id="source-search" type="search" placeholder="Search sources…" oninput="filterSources(this.value)"></label></div>
+      <div class="source-list" id="source-list">
+        {% for source in sources %}
+        <article class="source-row" data-source="{{ source.source_name|lower }} {{ source.country|lower }} {{ source.topic|lower }}">
+          <div class="source-main"><div class="source-avatar">{{ source.source_name[:1]|upper }}</div><div><div class="source-name"><strong>{{ source.source_name }}</strong><span class="status-pill {% if source.is_active %}active{% else %}inactive{% endif %}">{% if source.is_active %}Active{% else %}Paused{% endif %}</span></div><p>{{ countries.get(source.country, {}).name or source.country }} · {{ source.topic }} · {{ source.source_type|upper }}</p></div></div>
+          <div class="row-actions"><a class="row-link" href="{{ url_for('admin_edit_source', source_id=source.id) }}">Edit</a><form method="post" action="{{ url_for('admin_toggle_source', source_id=source.id) }}"><button type="submit" class="quiet-btn">{% if source.is_active %}Pause{% else %}Enable{% endif %}</button></form><form method="post" action="{{ url_for('admin_delete_source', source_id=source.id) }}" onsubmit='return confirm({{ ("Remove " ~ source.source_name ~ " from trusted sources?")|tojson }})'><button type="submit" class="delete-btn">Remove</button></form></div>
+        </article>
+        {% else %}<div class="empty-state"><span>◎</span><h3>No sources yet</h3><p>Add your first trusted publisher using the form.</p></div>{% endfor %}
       </div>
-      <label
-        >Source name
-        <input
-          type="text"
-          name="source_name"
-          placeholder="e.g. The East African"
-          required
-        />
-      </label>
-      <div class="field-row">
-        <label
-          >RSS feed URL
-          <input
-            type="url"
-            name="feed_url"
-            placeholder="https://example.com/rss.xml"
-          />
-        </label>
-        <label
-          >Site URL
-          <input
-            type="url"
-            name="site_url"
-            placeholder="https://example.com"
-            required
-          />
-        </label>
-      </div>
-      <label
-        >Source type
-        <select name="source_type">
-          <option value="rss">RSS feed</option>
-          <option value="html">HTML crawl</option>
-        </select>
-      </label>
-      <button type="submit">Approve source</button>
-    </form>
-
-    <div class="source-list">
-      <h2>Current approved sources</h2>
-      {% for source in sources %}
-      <div class="source-row">
-        <div>
-          <strong>{{ source.source_name }}</strong>
-          <span
-            >{{ countries.get(source.country, {}).name or source.country }} · {{
-            source.topic }} · {% if source.is_active %}enabled{% else
-            %}disabled{% endif %}</span
-          >
-        </div>
-        <div class="row-actions">
-          <a
-            class="row-link"
-            href="{{ url_for('admin_edit_source', source_id=source.id) }}"
-            >Edit</a
-          >
-          <form
-            method="post"
-            action="{{ url_for('admin_toggle_source', source_id=source.id) }}"
-            class="inline-form"
-          >
-            <button type="submit" class="toggle-btn">
-              {% if source.is_active %}Disable{% else %}Enable{% endif %}
-            </button>
-          </form>
-          <form
-            method="post"
-            action="{{ url_for('admin_delete_source', source_id=source.id) }}"
-            class="inline-form"
-          >
-            <button type="submit" class="delete-btn">Remove</button>
-          </form>
-        </div>
-      </div>
-      {% else %}
-      <p class="empty-note">No approved sources yet.</p>
-      {% endfor %}
-    </div>
+      <p class="no-results" id="no-results" hidden>No matching sources found.</p>
+    </section>
   </div>
 </main>
 <style>
-  .admin-shell {
-    padding-top: 40px;
-    padding-bottom: 70px;
-    display: flex;
-    justify-content: center;
-  }
-  .admin-card {
-    width: min(820px, 100%);
-    background: white;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 28px;
-  }
-  .wide {
-    max-width: 900px;
-  }
-  .admin-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-  }
-  .logout-link {
-    color: var(--teal);
-    font-weight: 700;
-  }
-  .source-form {
-    display: grid;
-    gap: 14px;
-    margin-top: 20px;
-  }
-  .field-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-  }
-  .source-form label {
-    display: grid;
-    gap: 8px;
-    font-weight: 700;
-    color: var(--ink);
-  }
-  .source-form input,
-  .source-form select {
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 12px 13px;
-    font: 16px "DM Sans";
-  }
-  .source-form button,
-  .delete-btn {
-    background: var(--teal);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font: 700 15px "DM Sans";
-    padding: 12px 14px;
-    cursor: pointer;
-  }
-  .source-list {
-    margin-top: 30px;
-    border-top: 1px solid var(--line);
-    padding-top: 20px;
-  }
-  .source-list h2 {
-    font: 600 24px "Space Grotesk";
-    margin: 0 0 16px;
-  }
-  .source-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 14px 16px;
-    margin-bottom: 12px;
-  }
-  .source-row strong {
-    display: block;
-    font-size: 17px;
-  }
-  .source-row span {
-    color: var(--muted);
-    font-size: 12px;
-  }
-  .row-actions {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-  .inline-form {
-    margin: 0;
-  }
-  .row-link {
-    color: var(--teal);
-    font-weight: 700;
-  }
-  .toggle-btn,
-  .delete-btn {
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font: 700 13px "DM Sans";
-    padding: 9px 12px;
-    cursor: pointer;
-  }
-  .toggle-btn {
-    background: var(--teal);
-  }
-  .delete-btn {
-    background: #b63b3b;
-  }
-  .empty-note {
-    color: var(--muted);
-  }
-  .error-box {
-    background: #fff1f1;
-    border: 1px solid #efb5b5;
-    color: #7d2222;
-    border-radius: 6px;
-    padding: 10px 12px;
-  }
-  @media (max-width: 760px) {
-    .field-row {
-      grid-template-columns: 1fr;
-    }
-    .source-row {
-      flex-direction: column;
-      align-items: flex-start;
-    }
-  }
+  .console-shell{padding-top:42px;padding-bottom:70px}.console-head{display:flex;justify-content:space-between;gap:30px;align-items:flex-end}.console-head h1{margin-bottom:10px}.console-head p,.section-title p,.list-toolbar p{color:var(--muted);margin:0}.console-actions{display:flex;gap:10px}.console-actions a{border:1px solid var(--line);background:white;border-radius:999px;padding:10px 14px;font-size:12px;font-weight:700}.console-actions .logout-link{background:#173f3c;color:white;border-color:#173f3c}.summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:30px 0}.summary-card{display:flex;flex-direction:column;background:white;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 10px 25px #143b3b08}.summary-card span,.summary-card small{color:var(--muted);font-size:11px}.summary-card strong{font:700 31px 'Space Grotesk';margin:8px 0 2px}.console-grid{display:grid;grid-template-columns:minmax(290px,.68fr) minmax(460px,1.32fr);gap:20px;align-items:start}.console-card{background:white;border:1px solid var(--line);border-radius:18px;padding:24px;box-shadow:0 16px 35px #143b3b09}.section-title{display:flex;gap:13px;align-items:flex-start}.section-title h2,.list-toolbar h2{font:700 21px 'Space Grotesk';margin:0 0 5px}.section-title p,.list-toolbar p{font-size:12px;line-height:1.5}.section-icon{width:34px;height:34px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px;background:#dff0ea;color:var(--teal);font-size:22px}.source-form{display:grid;gap:15px;margin-top:22px}.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}.source-form label{display:grid;gap:7px;font-size:12px;font-weight:700}.source-form input,.source-form select,.source-search input{width:100%;border:1px solid #cfdbd7;border-radius:9px;background:white;padding:11px 12px;font:14px 'DM Sans';outline:none}.source-form input:focus,.source-form select:focus,.source-search:focus-within{border-color:var(--teal);box-shadow:0 0 0 3px #087f7312}.primary-action{display:flex;justify-content:space-between;border:0;border-radius:10px;background:var(--teal);color:white;padding:13px 14px;font:700 13px 'DM Sans';cursor:pointer}.list-toolbar{display:flex;justify-content:space-between;gap:16px;align-items:center;padding-bottom:18px;border-bottom:1px solid var(--line)}.source-search{display:flex;align-items:center;border:1px solid #cfdbd7;border-radius:10px;padding-left:10px;min-width:190px}.source-search input{border:0;padding-left:6px}.source-list{display:grid;gap:10px;padding-top:16px}.source-row{display:flex;justify-content:space-between;gap:14px;align-items:center;border:1px solid var(--line);border-radius:13px;padding:14px;transition:.2s}.source-row:hover{border-color:#b6d2c9;box-shadow:0 8px 20px #143b3b0a}.source-main{display:flex;gap:12px;align-items:center;min-width:0}.source-avatar{width:40px;height:40px;display:grid;place-items:center;flex:0 0 auto;border-radius:12px;background:#e4f1eb;color:var(--teal);font:700 17px 'Space Grotesk'}.source-name{display:flex;align-items:center;gap:8px}.source-name strong{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.source-main p{color:var(--muted);font-size:11px;margin:5px 0 0}.status-pill{border-radius:999px;padding:3px 7px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}.status-pill.active{background:#dff3e7;color:#17683a}.status-pill.inactive{background:#f0f1f1;color:#707978}.row-actions{display:flex;align-items:center;gap:6px}.row-actions form{margin:0}.row-link,.quiet-btn,.delete-btn{border:0;border-radius:7px;padding:7px 8px;background:#edf4f1;color:#145e57;font:700 11px 'DM Sans';cursor:pointer}.delete-btn{background:#fff0ef;color:#a33a34}.empty-state,.no-results{text-align:center;color:var(--muted);padding:40px 10px}.empty-state span{font-size:35px}.empty-state h3{color:var(--ink)}.notice{display:flex;gap:10px;background:#fff1f1;border:1px solid #efb5b5;color:#7d2222;border-radius:10px;padding:12px 14px;margin-bottom:18px}.notice span{font-weight:800}
+  @media(max-width:980px){.console-grid{grid-template-columns:1fr}.add-card{order:2}.list-card{order:1}}@media(max-width:650px){.console-head{align-items:flex-start;flex-direction:column}.summary-grid{grid-template-columns:1fr 1fr}.summary-card:last-child{grid-column:1/-1}.field-row{grid-template-columns:1fr}.list-toolbar{align-items:flex-start;flex-direction:column}.source-search{width:100%}.source-row{align-items:flex-start;flex-direction:column}.row-actions{width:100%;justify-content:flex-end}}
 </style>
+<script>function filterSources(value){const query=value.trim().toLowerCase();let visible=0;document.querySelectorAll('.source-row').forEach(row=>{const show=row.dataset.source.includes(query);row.hidden=!show;if(show)visible++});document.getElementById('no-results').hidden=visible!==0}</script>
 {% endblock %}

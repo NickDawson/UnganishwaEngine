@@ -1,85 +1,33 @@
-{% extends 'base.html' %} {% block content %}
-<main class="container admin-shell">
-  <div class="admin-card">
+{% extends 'base.html' %}
+{% block content %}
+<main class="container auth-shell">
+  <section class="auth-panel auth-story">
+    <div class="admin-mark">U</div>
+    <div>
+      <div class="eyebrow light">Unganishwa newsroom</div>
+      <h1>Credible stories<br>start with trusted sources.</h1>
+      <p>Review publishers, maintain regional coverage and protect the quality of every reader's daily briefing.</p>
+    </div>
+    <small>Secure administrator workspace</small>
+  </section>
+  <section class="auth-panel auth-form-panel">
     <div class="eyebrow">Administrator access</div>
-    <h1>Trusted source control</h1>
-    <p class="intro">
-      Only an administrator can approve and manage sources to keep the portal
-      credible.
-    </p>
-    {% if error %}
-    <p class="error-box">{{ error }}</p>
-    {% endif %}
+    <h2>Welcome back</h2>
+    <p class="auth-copy">Sign in to manage the Unganishwa source network.</p>
+    {% if error %}<div class="notice error-box" role="alert"><span>!</span>{{ error }}</div>{% endif %}
     <form method="post" class="admin-form">
-      <label
-        >Username
-        <input
-          type="text"
-          name="username"
-          value="admin"
-          placeholder="Enter admin username"
-          required
-        />
+      <label>Username<input type="text" name="username" value="admin" autocomplete="username" required></label>
+      <label>Password
+        <div class="password-field"><input id="admin-password" type="password" name="password" autocomplete="current-password" placeholder="Enter your password" required><button type="button" class="password-toggle" aria-label="Show password" onclick="togglePassword()">Show</button></div>
       </label>
-      <label
-        >Password
-        <input
-          type="password"
-          name="password"
-          placeholder="Enter admin password"
-          required
-        />
-      </label>
-      <button type="submit">Access source manager</button>
+      <button type="submit" class="primary-action">Sign in to console <span>→</span></button>
     </form>
-  </div>
+    <p class="security-note">Your session automatically expires after 30 minutes of inactivity.</p>
+  </section>
 </main>
 <style>
-  .admin-shell {
-    padding-top: 40px;
-    padding-bottom: 70px;
-    display: flex;
-    justify-content: center;
-  }
-  .admin-card {
-    width: min(520px, 100%);
-    background: white;
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    padding: 28px;
-  }
-  .admin-form {
-    display: grid;
-    gap: 14px;
-    margin-top: 18px;
-  }
-  .admin-form label {
-    display: grid;
-    gap: 8px;
-    font-weight: 700;
-    color: var(--ink);
-  }
-  .admin-form input {
-    border: 1px solid var(--line);
-    border-radius: 6px;
-    padding: 12px 13px;
-    font: 16px "DM Sans";
-  }
-  .admin-form button {
-    background: var(--teal);
-    border: none;
-    border-radius: 6px;
-    color: white;
-    font: 700 15px "DM Sans";
-    padding: 12px 14px;
-    cursor: pointer;
-  }
-  .error-box {
-    background: #fff1f1;
-    border: 1px solid #efb5b5;
-    color: #7d2222;
-    border-radius: 6px;
-    padding: 10px 12px;
-  }
+  .auth-shell{min-height:calc(100vh - 173px);display:grid;grid-template-columns:1.05fr .95fr;align-items:stretch;padding-top:42px;padding-bottom:54px}.auth-panel{padding:clamp(30px,5vw,58px)}.auth-story{border-radius:24px 0 0 24px;background:radial-gradient(circle at 90% 8%,#f5c85b55 0 18%,transparent 18.5%),linear-gradient(145deg,#103f3b,#08766c);color:white;display:flex;flex-direction:column;justify-content:space-between;min-height:560px;box-shadow:0 25px 60px #143b3b22}.admin-mark{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;background:var(--yellow);color:#123d39;font:800 22px 'Space Grotesk'}.eyebrow.light{color:#f5c85b}.auth-story h1{font-size:clamp(36px,5vw,58px);color:white;margin:15px 0 20px}.auth-story p{max-width:520px;color:#c6ded8;line-height:1.7}.auth-story small{color:#9fc2ba}.auth-form-panel{align-self:center;background:white;border:1px solid var(--line);border-left:0;border-radius:0 24px 24px 0;box-shadow:20px 25px 60px #143b3b12}.auth-form-panel h2{font:700 35px 'Space Grotesk';margin:12px 0 8px}.auth-copy,.security-note{color:var(--muted);line-height:1.55}.admin-form{display:grid;gap:18px;margin-top:28px}.admin-form label{display:grid;gap:8px;font-size:13px;font-weight:700}.admin-form input{width:100%;border:1px solid #cad8d3;border-radius:11px;padding:14px;font:15px 'DM Sans';outline:none;transition:.2s}.admin-form input:focus{border-color:var(--teal);box-shadow:0 0 0 4px #087f7314}.password-field{position:relative}.password-field input{padding-right:70px}.password-toggle{position:absolute;right:8px;top:8px;border:0;background:#edf5f1;color:var(--teal);border-radius:7px;padding:7px 9px;font-weight:700;cursor:pointer}.primary-action{display:flex;justify-content:space-between;align-items:center;border:0;border-radius:11px;background:var(--teal);color:white;padding:14px 16px;font:700 15px 'DM Sans';cursor:pointer;box-shadow:0 10px 22px #087f7330;transition:.2s}.primary-action:hover{transform:translateY(-2px);background:#066a61}.notice{display:flex;gap:10px;align-items:center;border-radius:10px;padding:12px 14px;margin-top:18px;font-size:13px}.notice span{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:#b33a3a;color:white;font-weight:800}.error-box{background:#fff1f1;border:1px solid #efb5b5;color:#7d2222}.security-note{font-size:11px;margin:22px 0 0}
+  @media(max-width:800px){.auth-shell{grid-template-columns:1fr;padding-top:22px}.auth-story{min-height:300px;border-radius:20px 20px 0 0}.auth-story small{display:none}.auth-form-panel{border:1px solid var(--line);border-top:0;border-radius:0 0 20px 20px}.auth-story h1{font-size:36px}}
 </style>
+<script>function togglePassword(){const input=document.getElementById('admin-password');const button=document.querySelector('.password-toggle');const visible=input.type==='text';input.type=visible?'password':'text';button.textContent=visible?'Show':'Hide';button.setAttribute('aria-label',visible?'Show password':'Hide password')}</script>
 {% endblock %}
