@@ -415,7 +415,7 @@ def get_admin_source_page():
         requested_page = max(1, int(request.args.get('page', '1')))
     except ValueError:
         requested_page = 1
-    page_size = 25
+    page_size = 10
 
     filters = []
     params = []
