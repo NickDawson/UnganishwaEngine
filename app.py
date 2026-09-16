@@ -390,18 +390,88 @@ def admin_sources():
         source_type = request.form.get('source_type', 'rss').lower()
 
         if country not in COUNTRIES or topic not in TOPICS or not source_name or not (feed_url or site_url):
-            rows = get_source_rows()
-            return render_template('admin_sources.html', sources=rows, countries=COUNTRIES, topics=TOPICS,
-                                   error='Please provide a valid country, topic, source name, and at least one source URL.')
+            page_data = get_admin_source_page()
+            return render_template('admin_sources.html', countries=COUNTRIES, topics=TOPICS,
+                                   error='Please provide a valid country, topic, source name, and at least one source URL.',
+                                   **page_data)
 
         with db_connect(SOURCE_DATABASE) as db:
             execute_sql(db,
                         'INSERT INTO trusted_sources (country, topic, source_name, feed_url, site_url, source_type, is_active) VALUES (?, ?, ?, ?, ?, ?, 1) ON CONFLICT DO NOTHING',
                         (country, topic, source_name, feed_url or None, site_url or None, source_type))
             db.commit()
+        return redirect(url_for('admin_sources', added='1'))
 
-    rows = get_source_rows()
-    return render_template('admin_sources.html', sources=rows, countries=COUNTRIES, topics=TOPICS)
+    return render_template('admin_sources.html', countries=COUNTRIES, topics=TOPICS,
+                           **get_admin_source_page())
+
+
+def get_admin_source_page():
+    search_query = request.args.get('q', '').strip()
+    country_filter = request.args.get('country', '').lower()
+    topic_filter = request.args.get('topic', '')
+    status_filter = request.args.get('status', 'all').lower()
+    try:
+        requested_page = max(1, int(request.args.get('page', '1')))
+    except ValueError:
+        requested_page = 1
+    page_size = 25
+
+    filters = []
+    params = []
+    if search_query:
+        filters.append('(LOWER(source_name) LIKE ? OR LOWER(COALESCE(site_url, \'\')) LIKE ?)')
+        search_pattern = f'%{search_query.lower()}%'
+        params.extend([search_pattern, search_pattern])
+    if country_filter in COUNTRIES:
+        filters.append('country = ?')
+        params.append(country_filter)
+    else:
+        country_filter = ''
+    if topic_filter in TOPICS:
+        filters.append('topic = ?')
+        params.append(topic_filter)
+    else:
+        topic_filter = ''
+    if status_filter == 'active':
+        filters.append('is_active = 1')
+    elif status_filter == 'paused':
+        filters.append('is_active = 0')
+    else:
+        status_filter = 'all'
+
+    where_clause = f" WHERE {' AND '.join(filters)}" if filters else ''
+    with db_connect(SOURCE_DATABASE) as db:
+        total_filtered = execute_sql(db, f'SELECT COUNT(*) AS count FROM trusted_sources{where_clause}', params).fetchone()['count']
+        total_pages = max(1, (total_filtered + page_size - 1) // page_size)
+        current_page = min(requested_page, total_pages)
+        offset = (current_page - 1) * page_size
+        sources = execute_sql(
+            db,
+            f'''SELECT * FROM trusted_sources{where_clause}
+                ORDER BY country, source_name
+                LIMIT ? OFFSET ?''',
+            [*params, page_size, offset],
+        ).fetchall()
+        summary = execute_sql(db, '''
+            SELECT COUNT(*) AS total,
+                   COALESCE(SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END), 0) AS active,
+                   COALESCE(SUM(CASE WHEN feed_url IS NOT NULL AND feed_url != '' THEN 1 ELSE 0 END), 0) AS rss
+            FROM trusted_sources
+        ''').fetchone()
+
+    return {
+        'sources': sources,
+        'summary': summary,
+        'total_filtered': total_filtered,
+        'page': current_page,
+        'total_pages': total_pages,
+        'page_size': page_size,
+        'search_query': search_query,
+        'country_filter': country_filter,
+        'topic_filter': topic_filter,
+        'status_filter': status_filter,
+    }
 
 
 @app.route('/admin/sources/edit/<int:source_id>', methods=['GET', 'POST'])
