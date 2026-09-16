@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, timezone
 import hashlib
+import json
 import os
 import re
 import sqlite3
@@ -11,7 +12,7 @@ from urllib.parse import urljoin
 import feedparser
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, g, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
 from scrapy import Selector
 from werkzeug.security import check_password_hash, generate_password_hash
 from api import register_api
@@ -23,6 +24,7 @@ app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 DATABASE = Path(__file__).with_name('unganishwa_analytics.sqlite3')
 SOURCE_DATABASE = Path(__file__).with_name('trusted_sources.sqlite3')
+CURATED_SOURCES_FILE = Path(__file__).with_name('data') / 'east_africa_news_sources.json'
 DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 ADMIN_USERNAME = os.environ.get('UNGANISHWA_ADMIN_USER', 'admin')
 ADMIN_PASSWORD = os.environ.get('UNGANISHWA_ADMIN_KEY', 'admin123')
@@ -34,6 +36,7 @@ SPONSOR_NAME = os.environ.get('SPONSOR_NAME', '')
 SPONSOR_URL = os.environ.get('SPONSOR_URL', '')
 AFFILIATE_LABEL = os.environ.get('AFFILIATE_LABEL', 'Recommended for our readers')
 AFFILIATE_URL = os.environ.get('AFFILIATE_URL', '')
+PUBLIC_SITE_URL = os.environ.get('PUBLIC_SITE_URL', 'https://www.unganishwa.com').rstrip('/')
 
 COUNTRIES = {
     'tanzania': {'name': 'Tanzania', 'code': 'TZ', 'accent': 'teal'},
@@ -45,6 +48,17 @@ COUNTRIES = {
 
 TOPICS = ['Top Stories', 'World', 'National', 'Business', 'Technology',
           'Entertainment', 'Sports', 'Science', 'Health']
+TOPIC_SLUGS = {topic: re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-') for topic in TOPICS}
+SLUG_TOPICS = {slug: topic for topic, slug in TOPIC_SLUGS.items()}
+
+INFO_PAGES = {
+    'about': {'title': 'About Unganishwa', 'intro': 'Unganishwa brings trusted East African reporting into one clear, reader-friendly briefing.', 'sections': [('Our purpose', 'We help readers follow the stories shaping Tanzania, Kenya, Uganda, Rwanda and Burundi without losing the local context.'), ('How it works', 'Our platform collects stories from reviewed publishers, organises them by region and topic, and always links readers to the original report.'), ('Our standard', 'Clarity, source transparency and regional relevance guide how stories appear on Unganishwa.')]},
+    'privacy': {'title': 'Privacy Policy', 'intro': 'This policy explains the limited information Unganishwa uses to operate and improve the service.', 'sections': [('Information we use', 'We may store anonymous visit statistics, your preferences, and an email address only when you choose to subscribe.'), ('Cookies and analytics', 'A first-party cookie may distinguish returning visitors. We use aggregate analytics to understand which editions and topics are useful.'), ('External services', 'Articles and advertisements may link to third-party websites. Their own privacy policies apply after you leave Unganishwa.'), ('Your choices', 'You may request removal of subscription information by emailing hello@unganishwa.com.')]},
+    'terms': {'title': 'Terms of Use', 'intro': 'By using Unganishwa, you agree to use the service lawfully and responsibly.', 'sections': [('News links', 'Unganishwa is a discovery platform. Linked publishers own and are responsible for their original reporting.'), ('Availability', 'We work to keep the service accurate and available, but feeds, links and features may change without notice.'), ('Acceptable use', 'Do not misuse the service, attempt unauthorised access, or interfere with other readers.')]},
+    'editorial-policy': {'title': 'Editorial Policy', 'intro': 'Our editorial choices make regional news easier to discover while preserving source transparency.', 'sections': [('Source review', 'Sources are selected for relevance, publication consistency and a clear record of original reporting.'), ('Attribution', 'Every story names its publisher and links to the original page. Unganishwa summaries do not replace the full report.'), ('Independence', 'Advertising and sponsorship do not determine which stories are selected or how they are ranked.')]},
+    'corrections': {'title': 'Corrections Policy', 'intro': 'Accuracy matters. We review credible correction requests promptly and transparently.', 'sections': [('Report an issue', 'Send the story title, link and a short explanation to hello@unganishwa.com.'), ('What we correct', 'We correct errors introduced by our summaries, labels or source information. Corrections to an original article should also be sent to its publisher.')]},
+    'contact': {'title': 'Contact Unganishwa', 'intro': 'Questions, source suggestions, partnerships and correction requests are welcome.', 'sections': [('Email us', 'Write to hello@unganishwa.com and include enough detail for our team to respond efficiently.'), ('Source submissions', 'Publishers may send their website, RSS feed, country and coverage topics for editorial review.')]},
+}
 
 # Feeds are intentionally kept editable: a source can be added without changing the UI.
 RSS_FEEDS = {
@@ -183,6 +197,30 @@ def init_trusted_sources():
                 )
             db.commit()
 
+        if CURATED_SOURCES_FILE.exists():
+            curated_sources = json.loads(CURATED_SOURCES_FILE.read_text(encoding='utf-8'))
+            for source in curated_sources:
+                existing_source = execute_sql(
+                    db,
+                    'SELECT id, feed_url FROM trusted_sources WHERE country = ? AND source_name = ? ORDER BY id LIMIT 1',
+                    (source['country'], source['source_name']),
+                ).fetchone()
+                if existing_source:
+                    # Keep a manually configured RSS URL when the workbook only provides a website.
+                    feed_url = source['feed_url'] or existing_source['feed_url']
+                    execute_sql(
+                        db,
+                        'UPDATE trusted_sources SET topic = ?, feed_url = ?, site_url = ?, source_type = ?, is_active = ? WHERE id = ?',
+                        (source['topic'], feed_url, source['site_url'], source['source_type'], source['is_active'], existing_source['id']),
+                    )
+                else:
+                    execute_sql(
+                        db,
+                        'INSERT INTO trusted_sources (country, topic, source_name, feed_url, site_url, source_type, is_active) VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING',
+                        (source['country'], source['topic'], source['source_name'], source['feed_url'], source['site_url'], source['source_type'], source['is_active']),
+                    )
+            db.commit()
+
 
 def deduplicate_articles(articles):
     seen = set()
@@ -275,6 +313,7 @@ def enforce_admin_session():
 
 @app.context_processor
 def inject_analytics_link():
+    private_page = request.path.startswith('/admin') or request.path.startswith('/analytics')
     return {
         'analytics_url': '/analytics',
         'google_ads_client': GOOGLE_ADS_CLIENT,
@@ -283,6 +322,15 @@ def inject_analytics_link():
         'sponsor_url': SPONSOR_URL,
         'affiliate_label': AFFILIATE_LABEL,
         'affiliate_url': AFFILIATE_URL,
+        'public_site_url': PUBLIC_SITE_URL,
+        'default_robots_meta': 'noindex,nofollow' if private_page else 'index,follow,max-image-preview:large',
+        'site_schema': {
+            '@context': 'https://schema.org',
+            '@graph': [
+                {'@type': 'Organization', '@id': f'{PUBLIC_SITE_URL}/#organization', 'name': 'Unganishwa', 'url': f'{PUBLIC_SITE_URL}/', 'email': 'hello@unganishwa.com'},
+                {'@type': 'WebSite', '@id': f'{PUBLIC_SITE_URL}/#website', 'name': 'Unganishwa', 'url': f'{PUBLIC_SITE_URL}/', 'publisher': {'@id': f'{PUBLIC_SITE_URL}/#organization'}},
+            ],
+        },
     }
 
 
@@ -420,13 +468,40 @@ def index():
     if topic not in TOPICS:
         topic = 'Top Stories'
     language = request.args.get('language', 'English')
-    interests = request.args.getlist('interest') or ['Top Stories', 'Business', 'Technology']
+    return render_edition(country, topic, language)
+
+
+@app.route('/news/<country>/<topic_slug>')
+def edition(country, topic_slug):
+    country = country.lower()
+    topic = SLUG_TOPICS.get(topic_slug.lower())
+    if country not in COUNTRIES or not topic:
+        abort(404)
+    return render_edition(country, topic, request.args.get('language', 'English'))
+
+
+def render_edition(country, topic, language='English'):
     articles = load_articles(country, topic)
+    country_name = COUNTRIES[country]['name']
+    canonical_path = '/' if country == 'tanzania' and topic == 'Top Stories' else f'/news/{country}/{TOPIC_SLUGS[topic]}'
+    seo_title = ('Unganishwa | East Africa News and Daily Briefings' if canonical_path == '/'
+                 else f'{country_name} {topic} News | Unganishwa')
+    seo_description = (f'Latest {topic.lower()} news from {country_name}, curated from trusted East African publishers. '
+                       'Read a clear daily briefing and visit the original sources.')
+    item_list = {'@context': 'https://schema.org', '@type': 'ItemList',
+                 'name': f'{country_name} {topic} news',
+                 'itemListElement': [
+                     {'@type': 'ListItem', 'position': position, 'name': article['title'], 'url': article['link']}
+                     for position, article in enumerate(articles, start=1)
+                     if article.get('link') and article['link'] != '#']}
     return render_template('index.html', articles=articles, country=country,
                            country_info=COUNTRIES[country], countries=COUNTRIES,
                            topics=TOPICS, topic=topic, language=language,
                            languages=['English', 'Kiswahili', 'Kinyarwanda', 'Luganda', 'Kirundi'],
-                           interests=interests, updated=datetime.now(timezone.utc).strftime('%H:%M'))
+                           interests=['Top Stories', 'Business', 'Technology'],
+                           updated=datetime.now(timezone.utc).strftime('%H:%M'), topic_slugs=TOPIC_SLUGS,
+                           seo_title=seo_title, seo_description=seo_description,
+                           canonical_url=f'{PUBLIC_SITE_URL}{canonical_path}', structured_data=item_list)
 
 
 
@@ -440,7 +515,40 @@ def search():
     articles = [article for article in articles if query.lower() in
                 (article['title'] + article['summary']).lower()]
     return render_template('search_results.html', articles=articles, query=query,
-                           countries=COUNTRIES, topics=TOPICS)
+                           countries=COUNTRIES, topics=TOPICS,
+                           seo_title=f'Search results for {query} | Unganishwa' if query else 'Search | Unganishwa',
+                           seo_description='Search trusted East African news sources on Unganishwa.',
+                           canonical_url=f'{PUBLIC_SITE_URL}/search', robots_meta='noindex,follow')
+
+
+@app.route('/robots.txt')
+def robots_txt():
+    body = (f'User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow: /analytics\n'
+            f'Sitemap: {PUBLIC_SITE_URL}/sitemap.xml\n')
+    return Response(body, mimetype='text/plain')
+
+
+@app.route('/sitemap.xml')
+def sitemap_xml():
+    paths = ['/']
+    paths.extend(f'/news/{country}/{TOPIC_SLUGS[topic]}' for country in COUNTRIES for topic in TOPICS
+                 if not (country == 'tanzania' and topic == 'Top Stories'))
+    paths.extend(f'/{slug}' for slug in INFO_PAGES)
+    urls = ''.join(f'<url><loc>{PUBLIC_SITE_URL}{path}</loc></url>' for path in paths)
+    return Response(f'<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>', mimetype='application/xml')
+
+
+@app.route('/about')
+@app.route('/privacy')
+@app.route('/terms')
+@app.route('/editorial-policy')
+@app.route('/corrections')
+@app.route('/contact')
+def information_page():
+    slug = request.path.strip('/')
+    page = INFO_PAGES[slug]
+    return render_template('info_page.html', page=page, seo_title=f"{page['title']} | Unganishwa",
+                           seo_description=page['intro'], canonical_url=f'{PUBLIC_SITE_URL}/{slug}')
 
 
 @app.route('/analytics')
@@ -573,6 +681,7 @@ def get_source_rows(country=None, topic=None):
     if topic and topic != 'Top Stories':
         query += ' AND topic = ?'
         params.append(topic)
+    query += ' ORDER BY CASE WHEN feed_url IS NOT NULL AND feed_url != \'\' THEN 0 ELSE 1 END, source_name'
     rows = execute_sql(db, query, params).fetchall()
     db.close()
     return rows
@@ -583,6 +692,8 @@ def load_articles(country, topic):
     source_rows = get_source_rows(country, topic)
     if source_rows:
         for row in source_rows:
+            if len(articles) >= 24:
+                break
             source_name = row['source_name']
             source_topic = row['topic']
             if topic != 'Top Stories' and source_topic != topic:

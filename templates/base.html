@@ -1,9 +1,22 @@
 <!doctype html>
-<html>
+<html lang="{{ page_language|default('en') }}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Unganishwa | Your region, your world</title>
+    <title>{{ seo_title|default('Unganishwa | East Africa News and Daily Briefings') }}</title>
+    <meta name="description" content="{{ seo_description|default('Trusted news and daily briefings from Tanzania, Kenya, Uganda, Rwanda and Burundi.') }}" />
+    <meta name="robots" content="{{ robots_meta|default(default_robots_meta) }}" />
+    <link rel="canonical" href="{{ canonical_url|default(public_site_url ~ request.path) }}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Unganishwa" />
+    <meta property="og:title" content="{{ seo_title|default('Unganishwa | East Africa News and Daily Briefings') }}" />
+    <meta property="og:description" content="{{ seo_description|default('Trusted news and daily briefings from across East Africa.') }}" />
+    <meta property="og:url" content="{{ canonical_url|default(public_site_url ~ request.path) }}" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="{{ seo_title|default('Unganishwa | East Africa News and Daily Briefings') }}" />
+    <meta name="twitter:description" content="{{ seo_description|default('Trusted news and daily briefings from across East Africa.') }}" />
+    <script type="application/ld+json">{{ site_schema|tojson }}</script>
+    {% if structured_data %}<script type="application/ld+json">{{ structured_data|tojson }}</script>{% endif %}
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link
       href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap"
@@ -628,7 +641,7 @@
     {% block content %}{% endblock %}
     <footer>
       <div class="container footer-grid">
-        <div><strong>unganishwa.</strong><br />Independent context for East Africa, in the language you choose.<div class="footer-links"><a href="mailto:hello@unganishwa.com">Contact</a><a href="{{ url_for('admin_login') }}">Admin</a><a href="#">Privacy</a><a href="#">Editorial policy</a></div></div>
+        <div><strong>unganishwa.</strong><br />Independent context for East Africa, in the language you choose.<div class="footer-links"><a href="/about">About</a><a href="/contact">Contact</a><a href="{{ url_for('admin_login') }}">Admin</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/editorial-policy">Editorial policy</a><a href="/corrections">Corrections</a></div></div>
         <div class="footer-actions">
           {% if sponsor_name and sponsor_url %}<a
             class="sponsor-link"

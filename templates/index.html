@@ -9,13 +9,13 @@
       </select>
       <span class="filter-divider"></span>
       <span class="label">Region</span>
-      <select aria-label="Country" onchange="location.href='{{ url_for('index', country=country, topic=topic, language=language) }}&country='+this.value">
-        {% for key, info in countries.items() %}<option value="{{ key }}" {% if key == country %}selected{% endif %}>{{ info.name }} · {{ info.code }}</option>{% endfor %}
+      <select aria-label="Country" onchange="location.href=this.options[this.selectedIndex].dataset.url">
+        {% for key, info in countries.items() %}<option value="{{ key }}" data-url="{{ url_for('edition', country=key, topic_slug=topic_slugs[topic], language=language) }}" {% if key == country %}selected{% endif %}>{{ info.name }} · {{ info.code }}</option>{% endfor %}
       </select>
       <span class="edition-status"><i></i> Live edition</span>
     </div>
     <nav class="topics" aria-label="News topics">
-      {% for item in topics %}<a class="topic {% if item == topic %}active{% endif %}" href="{{ url_for('index', country=country, topic=item, language=language) }}">{{ item }}</a>{% endfor %}
+      {% for item in topics %}<a class="topic {% if item == topic %}active{% endif %}" href="{{ url_for('edition', country=country, topic_slug=topic_slugs[item], language=language) }}">{{ item }}</a>{% endfor %}
     </nav>
   </div>
 </div>
@@ -59,7 +59,7 @@
     </div>
   </section>
   {% else %}
-  <section class="empty-editorial"><span>Edition update</span><h2>No stories in this topic yet.</h2><p>Try Top Stories or choose another topic while our sources publish their next updates.</p><a href="{{ url_for('index', country=country, topic='Top Stories', language=language) }}">Return to Top Stories</a></section>
+  <section class="empty-editorial"><span>Edition update</span><h2>No stories in this topic yet.</h2><p>Try Top Stories or choose another topic while our sources publish their next updates.</p><a href="{{ url_for('edition', country=country, topic_slug=topic_slugs['Top Stories'], language=language) }}">Return to Top Stories</a></section>
   {% endif %}
 
   <section class="trust-strip"><div><span>01</span><strong>Trusted sources</strong><small>Every publisher is reviewed by our editors.</small></div><div><span>02</span><strong>Regional focus</strong><small>Coverage shaped around East African readers.</small></div><div><span>03</span><strong>Reader control</strong><small>Choose the countries and topics that matter.</small></div></section>

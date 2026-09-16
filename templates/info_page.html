@@ -1,0 +1,19 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="container editorial-page">
+  <article class="info-page">
+    <div class="eyebrow">Unganishwa standards</div>
+    <h1>{{ page.title }}</h1>
+    <p class="info-intro">{{ page.intro }}</p>
+    {% for heading, copy in page.sections %}
+    <section><h2>{{ heading }}</h2><p>{{ copy }}</p></section>
+    {% endfor %}
+  </article>
+</main>
+<style>
+  .info-page{max-width:780px;margin:72px auto 100px;background:#fff;border:1px solid var(--line);padding:clamp(28px,6vw,72px)}
+  .info-page h1{font:700 clamp(42px,7vw,72px)/.98 "Space Grotesk";letter-spacing:-3px;margin:12px 0 22px}
+  .info-intro{font-size:20px;line-height:1.65;color:#425153;border-bottom:1px solid var(--line);padding-bottom:32px;margin-bottom:34px}
+  .info-page section{padding:12px 0}.info-page h2{font:700 22px "Space Grotesk";margin-bottom:8px}.info-page section p{color:var(--muted);font-size:16px;line-height:1.75}
+</style>
+{% endblock %}
