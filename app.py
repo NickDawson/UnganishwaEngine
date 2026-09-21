@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta, timezone
+import secrets
 import hashlib
 import json
 import os
@@ -9,21 +10,27 @@ import uuid
 from pathlib import Path
 from urllib.parse import urljoin
 
-import feedparser
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
 from scrapy import Selector
 from werkzeug.security import check_password_hash, generate_password_hash
 from api import register_api
+from editorial import Newsroom
+from websub import WebSub
+from ingestion import download, feed_articles
+from visitor_geo import visitor_country
+from translation import (COUNTRY_LANGUAGES, resolve_language, translate_page,
+                         TranslationUnavailable)
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'unganishwa-admin-secret')
+app.secret_key = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
-DATABASE = Path(__file__).with_name('unganishwa_analytics.sqlite3')
-SOURCE_DATABASE = Path(__file__).with_name('trusted_sources.sqlite3')
+DATA_DIRECTORY = Path(os.environ.get('UNGANISHWA_DATA_DIR', str(Path(__file__).parent)))
+DATABASE = DATA_DIRECTORY / 'unganishwa_analytics.sqlite3'
+SOURCE_DATABASE = DATA_DIRECTORY / 'trusted_sources.sqlite3'
 CURATED_SOURCES_FILE = Path(__file__).with_name('data') / 'east_africa_news_sources.json'
 DATABASE_URL = os.environ.get('DATABASE_URL', '').strip()
 ADMIN_USERNAME = os.environ.get('UNGANISHWA_ADMIN_USER', 'admin')
@@ -44,9 +51,12 @@ COUNTRIES = {
     'uganda': {'name': 'Uganda', 'code': 'UG', 'accent': 'gold'},
     'rwanda': {'name': 'Rwanda', 'code': 'RW', 'accent': 'blue'},
     'burundi': {'name': 'Burundi', 'code': 'BI', 'accent': 'green'},
+    'congo': {'name': 'Congo (DRC)', 'code': 'CD', 'accent': 'blue'},
+    'somalia': {'name': 'Somalia', 'code': 'SO', 'accent': 'teal'},
+    'south-sudan': {'name': 'South Sudan', 'code': 'SS', 'accent': 'gold'},
 }
 
-TOPICS = ['Top Stories', 'World', 'National', 'Business', 'Technology',
+TOPICS = ['Top Stories', 'Uncategorized', 'World', 'National', 'Business', 'Technology',
           'Entertainment', 'Sports', 'Science', 'Health']
 TOPIC_SLUGS = {topic: re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-') for topic in TOPICS}
 SLUG_TOPICS = {slug: topic for topic, slug in TOPIC_SLUGS.items()}
@@ -60,24 +70,6 @@ INFO_PAGES = {
     'contact': {'title': 'Contact Unganishwa', 'intro': 'Questions, source suggestions, partnerships and correction requests are welcome.', 'sections': [('Email us', 'Write to hello@unganishwa.com and include enough detail for our team to respond efficiently.'), ('Source submissions', 'Publishers may send their website, RSS feed, country and coverage topics for editorial review.')]},
 }
 
-# Feeds are intentionally kept editable: a source can be added without changing the UI.
-RSS_FEEDS = {
-    'tanzania': {'Top Stories': {'The Citizen': 'https://www.thecitizen.co.tz/tanzania/rss'},
-                 'National': {'Mwananchi': 'https://www.mwananchi.co.tz/rss'}},
-    'kenya': {'Top Stories': {'The Standard': 'https://www.standardmedia.co.ke/rss/headlines.php'},
-              'Business': {'Business Daily': 'https://www.businessdailyafrica.com/bd/rss'}},
-    'uganda': {'Top Stories': {'Daily Monitor': 'https://www.monitor.co.ug/uganda/rss'}},
-    'rwanda': {'Top Stories': {'The New Times': 'https://www.newtimes.co.rw/rss.xml'}},
-    'burundi': {'Top Stories': {'Iwacu': 'https://www.iwacu-burundi.org/feed/'}},
-}
-
-DEMO_ARTICLES = [
-    {'title': 'East Africa puts local innovation at the centre of a connected future', 'summary': 'New partnerships are helping founders, communities and public services turn practical ideas into everyday progress.', 'source': 'Unganishwa Desk', 'topic': 'Technology', 'country': 'tanzania', 'minutes': '5 min read', 'published': 'Today', 'link': 'https://www.thecitizen.co.tz/'},
-    {'title': 'Regional markets watch food prices as harvest season approaches', 'summary': 'Traders and households are tracking supply, transport costs and the latest market signals across the region.', 'source': 'The East African', 'topic': 'Business', 'country': 'kenya', 'minutes': '4 min read', 'published': 'Today', 'link': 'https://www.theeastafrican.co.ke/'},
-    {'title': 'A new generation of creators is reshaping East African entertainment', 'summary': 'Music, film and digital storytelling are travelling further than ever, bringing local voices to global audiences.', 'source': 'Culture Wire', 'topic': 'Entertainment', 'country': 'uganda', 'minutes': '6 min read', 'published': 'Yesterday', 'link': 'https://www.monitor.co.ug/'},
-    {'title': 'What healthier cities could look like for the Great Lakes region', 'summary': 'Urban planners and health workers are exploring simple changes that make daily life safer and more active.', 'source': 'Health Africa', 'topic': 'Health', 'country': 'rwanda', 'minutes': '7 min read', 'published': 'Yesterday', 'link': 'https://www.newtimes.co.rw/'},
-    {'title': 'The community projects quietly changing life in Burundi', 'summary': 'Local groups are building new paths to opportunity through education, farming and neighbourhood collaboration.', 'source': 'Iwacu', 'topic': 'National', 'country': 'burundi', 'minutes': '5 min read', 'published': '2 days ago', 'link': 'https://www.iwacu-burundi.org/'},
-]
 
 
 def db_connect(sqlite_path):
@@ -146,6 +138,12 @@ def init_analytics():
                 created_at TEXT NOT NULL
             )
         ''')
+        execute_sql(db, """CREATE TABLE IF NOT EXISTS visitor_country_daily (
+            day TEXT NOT NULL, country_code TEXT NOT NULL, page_views INTEGER NOT NULL DEFAULT 0,
+            PRIMARY KEY (day, country_code))""")
+        execute_sql(db, """CREATE TABLE IF NOT EXISTS visitor_country_browsers (
+            day TEXT NOT NULL, country_code TEXT NOT NULL, visitor_hash TEXT NOT NULL,
+            PRIMARY KEY (day, country_code, visitor_hash))""")
         for region in COUNTRIES:
             execute_sql(db, 'INSERT INTO portal_stats (region) VALUES (?) ON CONFLICT (region) DO NOTHING', (region,))
         db.commit()
@@ -206,13 +204,8 @@ def init_trusted_sources():
                     (source['country'], source['source_name']),
                 ).fetchone()
                 if existing_source:
-                    # Keep a manually configured RSS URL when the workbook only provides a website.
-                    feed_url = source['feed_url'] or existing_source['feed_url']
-                    execute_sql(
-                        db,
-                        'UPDATE trusted_sources SET topic = ?, feed_url = ?, site_url = ?, source_type = ?, is_active = ? WHERE id = ?',
-                        (source['topic'], feed_url, source['site_url'], source['source_type'], source['is_active'], existing_source['id']),
-                    )
+                    # Do not reset administrator edits or paused sources on restart.
+                    continue
                 else:
                     execute_sql(
                         db,
@@ -264,6 +257,12 @@ def record_visit(region, is_new_visitor, visitor_id):
             page_views = traffic_daily.page_views + 1,
             unique_visitors = traffic_daily.unique_visitors + ?
     ''', (day, 1 if is_new_visitor else 0, 0 if is_new_visitor else 0))
+    origin = visitor_country(request)
+    execute_sql(db, '''INSERT INTO visitor_country_daily (day, country_code, page_views)
+        VALUES (?, ?, 1) ON CONFLICT (day, country_code) DO UPDATE SET
+        page_views = visitor_country_daily.page_views + 1''', (day, origin))
+    execute_sql(db, '''INSERT INTO visitor_country_browsers (day, country_code, visitor_hash)
+        VALUES (?, ?, ?) ON CONFLICT DO NOTHING''', (day, origin, visitor_hash))
     db.commit()
 
 
@@ -282,9 +281,10 @@ def add_visitor_cookie(response):
 
 @app.before_request
 def track_portal_visit():
-    if not request.endpoint or request.endpoint.startswith('admin_') or request.endpoint == 'analytics':
+    if (request.method != 'GET' or not request.endpoint or request.path.startswith(('/admin', '/websub/', '/static/'))
+            or request.endpoint in ('analytics', 'api_health', 'api_countries', 'api_topics')):
         return
-    region = request.args.get('country', 'tanzania').lower()
+    region = (request.view_args or {}).get('country', request.args.get('country', 'tanzania')).lower()
     if region not in COUNTRIES:
         region = 'tanzania'
     visitor_id = request.cookies.get('unganishwa_visitor')
@@ -297,18 +297,7 @@ def track_portal_visit():
 
 @app.before_request
 def enforce_admin_session():
-    if request.endpoint and request.endpoint.startswith('admin_'):
-        if request.endpoint not in {'admin_login'} and not session.get('admin_logged_in'):
-            return redirect(url_for('admin_login'))
-        if session.get('admin_logged_in'):
-            session_lifetime = 30 * 60
-            last_seen = session.get('admin_last_seen', 0)
-            if time.time() - last_seen > session_lifetime:
-                session.pop('admin_logged_in', None)
-                session.pop('admin_user', None)
-                session.pop('admin_last_seen', None)
-                return redirect(url_for('admin_login'))
-            session['admin_last_seen'] = time.time()
+    return newsroom.authorize()
 
 
 @app.context_processor
@@ -352,27 +341,21 @@ def subscribe():
 
 @app.route('/admin/login', methods=['GET', 'POST'])
 def admin_login():
-    if session.get('admin_logged_in'):
-        return redirect(url_for('admin_sources'))
+    if newsroom.current_user():
+        return redirect(url_for('newsroom.inbox'))
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        if username == ADMIN_USERNAME and check_password_hash(ADMIN_PASSWORD_HASH, password):
-            session.permanent = True
-            session['admin_logged_in'] = True
-            session['admin_user'] = username
-            session['admin_last_seen'] = time.time()
-            return redirect(url_for('admin_sources'))
-        return render_template('admin_login.html', error='Invalid administrator username or password.')
+        if newsroom.authenticate(username, password):
+            return redirect(url_for('newsroom.inbox'))
+        return render_template('admin_login.html', error='Invalid username or password.')
     return render_template('admin_login.html')
 
 
 @app.route('/admin/logout')
 def admin_logout():
-    session.pop('admin_logged_in', None)
-    session.pop('admin_user', None)
-    session.pop('admin_last_seen', None)
+    session.clear()
     return redirect(url_for('admin_login'))
 
 
@@ -537,7 +520,7 @@ def index():
     topic = request.args.get('topic', 'Top Stories')
     if topic not in TOPICS:
         topic = 'Top Stories'
-    language = request.args.get('language', 'English')
+    language = request.args.get('language', 'Original')
     return render_edition(country, topic, language)
 
 
@@ -547,10 +530,11 @@ def edition(country, topic_slug):
     topic = SLUG_TOPICS.get(topic_slug.lower())
     if country not in COUNTRIES or not topic:
         abort(404)
-    return render_edition(country, topic, request.args.get('language', 'English'))
+    return render_edition(country, topic, request.args.get('language', 'Original'))
 
 
-def render_edition(country, topic, language='English'):
+def render_edition(country, topic, language='Original'):
+    language = resolve_language(country, language) or 'Original'
     articles = load_articles(country, topic)
     country_name = COUNTRIES[country]['name']
     canonical_path = '/' if country == 'tanzania' and topic == 'Top Stories' else f'/news/{country}/{TOPIC_SLUGS[topic]}'
@@ -564,14 +548,21 @@ def render_edition(country, topic, language='English'):
                      {'@type': 'ListItem', 'position': position, 'name': article['title'], 'url': article['link']}
                      for position, article in enumerate(articles, start=1)
                      if article.get('link') and article['link'] != '#']}
-    return render_template('index.html', articles=articles, country=country,
+    html = render_template('index.html', articles=articles, country=country,
                            country_info=COUNTRIES[country], countries=COUNTRIES,
                            topics=TOPICS, topic=topic, language=language,
-                           languages=['English', 'Kiswahili', 'Kinyarwanda', 'Luganda', 'Kirundi'],
+                           languages=['Original', *COUNTRY_LANGUAGES[country]],
                            interests=['Top Stories', 'Business', 'Technology'],
                            updated=datetime.now(timezone.utc).strftime('%H:%M'), topic_slugs=TOPIC_SLUGS,
                            seo_title=seo_title, seo_description=seo_description,
                            canonical_url=f'{PUBLIC_SITE_URL}{canonical_path}', structured_data=item_list)
+    try:
+        return translate_page(html, language)
+    except TranslationUnavailable:
+        notice = ('<p class="container" role="status">Translation is temporarily unavailable. '
+                  'Showing original text. / Tafsiri haipatikani kwa sasa; habari ziko katika lugha ya asili.</p>')
+        return html.replace('<main class="container editorial-page">',
+                            '<main class="container editorial-page">' + notice, 1)
 
 
 
@@ -635,11 +626,19 @@ def analytics():
     ).fetchone()
     total_visits = traffic['page_views']
     total_visitors = execute_sql(get_db(), 'SELECT COUNT(*) AS count FROM anonymous_visitors').fetchone()['count']
+    origin_rows = execute_sql(get_db(), '''SELECT d.country_code, SUM(d.page_views) AS visits,
+        (SELECT COUNT(DISTINCT b.visitor_hash) FROM visitor_country_browsers b
+         WHERE b.country_code = d.country_code) AS visitors
+        FROM visitor_country_daily d GROUP BY d.country_code ORDER BY visits DESC''').fetchall()
+    origin_names = {info['code']: info['name'] for info in COUNTRIES.values()}
+    origin_names['Unknown'] = 'Unknown country'
     leader = rows[0] if rows and rows[0]['visits'] else None
     return render_template('analytics.html', stats=rows, total_visits=total_visits,
                            total_visitors=total_visitors,
                            daily_unique_visitors=daily_traffic['unique_visitors'] if daily_traffic else 0,
-                           leader=leader,
+                           leader=leader, origin_rows=origin_rows, origin_names=origin_names,
+                           geo_configured=bool(os.environ.get('GEOIP_DATABASE_PATH') or
+                               (os.environ.get('GEO_COUNTRY_HEADER') and os.environ.get('GEO_TRUSTED_PROXY_CIDRS'))),
                            countries=COUNTRIES)
 
 
@@ -654,12 +653,8 @@ def normalize_article(article):
 
 
 def fetch_html(url):
-    try:
-        response = requests.get(url, timeout=12, headers={'User-Agent': 'UnganishwaBot/1.0'})
-        response.raise_for_status()
-        return response.text
-    except requests.RequestException:
-        return None
+    payload, _, _ = download(url)
+    return payload.decode('utf-8', errors='replace')
 
 
 def extract_html_articles(site_url, source_name, country, feed_topic):
@@ -725,78 +720,28 @@ def extract_html_articles(site_url, source_name, country, feed_topic):
     return deduplicate_articles(candidates[:8])
 
 
-def extract_feed_articles(feed_url, source_name, country, feed_topic):
-    parsed_feed = feedparser.parse(feed_url)
-    entries = []
-    for entry in parsed_feed.entries[:8]:
-        entries.append(normalize_article({
-            'title': entry.get('title', 'Untitled story'),
-            'summary': entry.get('summary', 'Read the latest report from this source.'),
-            'source': source_name,
-            'country': country,
-            'topic': feed_topic,
-            'link': entry.get('link', '#'),
-            'published': entry.get('published', 'Recently'),
-        }))
-    return deduplicate_articles(entries)
-
-
-def get_source_rows(country=None, topic=None):
-    db = db_connect(SOURCE_DATABASE)
-    query = 'SELECT * FROM trusted_sources WHERE is_active = 1'
-    params = []
-    if country:
-        query += ' AND country = ?'
-        params.append(country)
-    if topic and topic != 'Top Stories':
-        query += ' AND topic = ?'
-        params.append(topic)
-    query += ' ORDER BY CASE WHEN feed_url IS NOT NULL AND feed_url != \'\' THEN 0 ELSE 1 END, source_name'
-    rows = execute_sql(db, query, params).fetchall()
-    db.close()
-    return rows
-
-
 def load_articles(country, topic):
+    return newsroom.public_articles(country, topic)
+
+
+def collect_news_source(source):
     articles = []
-    source_rows = get_source_rows(country, topic)
-    if source_rows:
-        for row in source_rows:
-            if len(articles) >= 24:
-                break
-            source_name = row['source_name']
-            source_topic = row['topic']
-            if topic != 'Top Stories' and source_topic != topic:
-                continue
-            feed_url = row['feed_url']
-            site_url = row['site_url']
-            if feed_url:
-                feed_articles = extract_feed_articles(feed_url, source_name, country, source_topic)
-                if feed_articles:
-                    articles.extend(feed_articles)
-                    continue
-            if site_url:
-                articles.extend(extract_html_articles(site_url, source_name, country, source_topic))
+    if source['feed_url']:
+        try:
+            payload, _, _ = download(source['feed_url'])
+            articles = feed_articles(payload, source)
+        except (requests.RequestException, OSError, ValueError):
+            if not source['site_url']:
+                raise
+    if not articles and source['site_url']:
+        articles = extract_html_articles(source['site_url'], source['source_name'], source['country'], 'Uncategorized')
+    return newsroom.ingest(source, articles)
 
-    if not articles:
-        feeds = RSS_FEEDS.get(country, {})
-        selected = feeds if topic == 'Top Stories' else {topic: feeds.get(topic, {})}
-        for feed_topic, sources in selected.items():
-            for source, source_config in sources.items():
-                config = source_config if isinstance(source_config, dict) else {'rss': source_config, 'site': source_config}
-                feed_url = config.get('rss') or config.get('feed') or config.get('url')
-                site_url = config.get('site') or config.get('url') or config.get('rss')
-                if feed_url:
-                    feed_articles = extract_feed_articles(feed_url, source, country, feed_topic)
-                    if feed_articles:
-                        articles.extend(feed_articles)
-                        continue
-                if site_url:
-                    articles.extend(extract_html_articles(site_url, source, country, feed_topic))
 
-    fallback = [article for article in DEMO_ARTICLES if article['country'] == country and
-                (topic == 'Top Stories' or article['topic'] == topic)]
-    return deduplicate_articles(articles + fallback)
+newsroom = Newsroom(app, db_connect, execute_sql, SOURCE_DATABASE, COUNTRIES, TOPICS,
+                    ADMIN_USERNAME, ADMIN_PASSWORD_HASH, postgres=bool(DATABASE_URL))
+newsroom.collect_source = collect_news_source
+websub = WebSub(app, newsroom, PUBLIC_SITE_URL)
 
 
 register_api(app, COUNTRIES, TOPICS, load_articles, deduplicate_articles,

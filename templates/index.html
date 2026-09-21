@@ -4,8 +4,8 @@
   <div class="container filter-bar">
     <div class="control-row">
       <span class="label">Edition</span>
-      <select aria-label="Language" onchange="location.href='{{ url_for('index', country=country, topic=topic) }}&language='+this.value">
-        {% for item in languages %}<option value="{{ item }}" {% if item == language %}selected{% endif %}>{{ item }}</option>{% endfor %}
+      <select aria-label="Language" onchange="location.href=this.options[this.selectedIndex].dataset.url">
+        {% for item in languages %}<option value="{{ item }}" data-url="{{ url_for('edition', country=country, topic_slug=topic_slugs[topic], language=item) }}" {% if item == language %}selected{% endif %}>{{ item }}</option>{% endfor %}
       </select>
       <span class="filter-divider"></span>
       <span class="label">Region</span>

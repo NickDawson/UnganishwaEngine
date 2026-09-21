@@ -49,9 +49,13 @@
     </div>
     {% endfor %}
   </div>
+  <div class="feed-head"><h2>Where visitors come from</h2><span class="updated">Estimated from visitor IP · All recorded dates</span></div>
+  {% if not geo_configured %}<p class="intro">Visitor country detection is not configured yet. New visits appear as Unknown country.</p>{% endif %}
+  <div class="region-list">{% for row in origin_rows %}<div class="region-row"><div><strong>{{ origin_names.get(row.country_code, row.country_code) }}</strong><span>{{ row.visitors }} anonymous browsers</span></div><div class="bar-track"><i style="width:{{ ((row.visits / (origin_rows[0].visits or 1)) * 100)|round|int }}%"></i></div><b>{{ row.visits }}</b></div>{% else %}<p>No visitor-country data collected yet.</p>{% endfor %}</div>
+  <p class="privacy-note">Country is approximate and may reflect a VPN or proxy. It is independent of the news edition selected. A browser visiting from multiple countries can appear in more than one country.</p>
   <p class="privacy-note">
     Privacy note: Unganishwa stores an anonymous visitor cookie and region
-    totals only. It does not store IP addresses or personal identities.
+    totals, plus anonymous browser counts by country. Analytics does not store raw IP addresses or personal identities.
   </p>
 </main>
 <style>

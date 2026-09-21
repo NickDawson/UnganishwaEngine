@@ -5,7 +5,7 @@
   <header class="edit-head"><div class="eyebrow">Admin console</div><h1>Edit source</h1><p>Keep publisher details accurate and control whether stories appear in the live feed.</p></header>
   {% if error %}<div class="notice error-box" role="alert"><span>!</span>{{ error }}</div>{% endif %}
   {% if source %}
-  <form method="post" class="edit-grid">
+  <form method="post" class="edit-grid"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
     <section class="edit-card">
       <div class="section-heading"><span>01</span><div><h2>Publisher details</h2><p>Identity and regional classification.</p></div></div>
       <label>Source name<input type="text" name="source_name" value="{{ source.source_name }}" required></label>

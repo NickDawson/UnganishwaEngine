@@ -2,7 +2,7 @@
 {% block content %}
 <main class="container console-shell">
   <header class="console-head">
-    <div><div class="eyebrow">Admin console</div><h1>Source network</h1><p>Manage the publishers feeding Unganishwa's regional briefings.</p></div>
+    <div><div class="eyebrow">Admin console</div><h1>Source network</h1><p>Manage publishers. Their incoming stories start as Uncategorized; the newsroom team assigns categories.</p></div>
     <div class="console-actions"><a href="{{ url_for('analytics') }}">View insights</a><a class="logout-link" href="{{ url_for('admin_logout') }}">Log out</a></div>
   </header>
 
@@ -18,7 +18,7 @@
   <section class="console-card add-card">
     <details {% if error %}open{% endif %}>
       <summary><div class="section-title"><span class="section-icon">+</span><div><h2>Add a trusted source</h2><p>Enter publisher details and at least one content URL.</p></div></div><span class="expand-label">Open form</span></summary>
-      <form method="post" class="source-form">
+      <form method="post" class="source-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <fieldset><legend>Publisher</legend><div class="form-grid three"><label>Source name<input type="text" name="source_name" placeholder="e.g. Michuzi Blog" autocomplete="organization" required></label><label>Country<select name="country" required>{% for key, info in countries.items() %}<option value="{{ key }}">{{ info.name }}</option>{% endfor %}</select></label><label>Topic<select name="topic" required>{% for item in topics %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></label></div></fieldset>
         <fieldset><legend>Content connection</legend><div class="form-grid two"><label>RSS feed URL <small>Recommended</small><input type="url" name="feed_url" placeholder="https://example.com/feed.xml"></label><label>Website URL<input type="url" name="site_url" placeholder="https://example.com"></label></div><div class="method-row"><label>Ingestion method<select name="source_type"><option value="rss">RSS feed</option><option value="html">Website crawl</option></select></label><p>When RSS is unavailable, Unganishwa can discover headlines from the website.</p></div></fieldset>
         <div class="form-actions"><button type="reset" class="secondary-action">Clear</button><button type="submit" class="primary-action">Approve and add source <span>→</span></button></div>
@@ -47,7 +47,7 @@
             <td><strong class="country-name">{{ countries.get(source.country, {}).name or source.country }}</strong><small>{{ source.topic }}</small></td>
             <td><span class="type-pill {% if source.feed_url %}rss{% else %}html{% endif %}">{% if source.feed_url %}RSS{% else %}HTML{% endif %}</span>{% if source.feed_url %}<small class="feed-present">Feed connected</small>{% else %}<small>Website crawl</small>{% endif %}</td>
             <td><span class="status-pill {% if source.is_active %}active{% else %}inactive{% endif %}"><i></i>{% if source.is_active %}Active{% else %}Paused{% endif %}</span></td>
-            <td><div class="row-actions"><a class="row-link" href="{{ url_for('admin_edit_source', source_id=source.id) }}">Edit</a><form method="post" action="{{ url_for('admin_toggle_source', source_id=source.id) }}"><button type="submit" class="quiet-btn">{% if source.is_active %}Pause{% else %}Enable{% endif %}</button></form><form method="post" action="{{ url_for('admin_delete_source', source_id=source.id) }}" onsubmit='return confirm({{ ("Remove " ~ source.source_name ~ " from trusted sources?")|tojson }})'><button type="submit" class="delete-btn" aria-label="Remove {{ source.source_name }}">Remove</button></form></div></td>
+            <td><div class="row-actions">{% if source.is_active %}<form method="post" action="{{ url_for('newsroom.collect', source_id=source.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="quiet-btn">Collect news</button></form>{% endif %}<a class="row-link" href="{{ url_for('admin_edit_source', source_id=source.id) }}">Edit</a><form method="post" action="{{ url_for('admin_toggle_source', source_id=source.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="quiet-btn">{% if source.is_active %}Pause{% else %}Enable{% endif %}</button></form><form method="post" action="{{ url_for('admin_delete_source', source_id=source.id) }}" onsubmit='return confirm({{ ("Remove " ~ source.source_name ~ " from trusted sources?")|tojson }})'><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="delete-btn" aria-label="Remove {{ source.source_name }}">Remove</button></form></div></td>
           </tr>
           {% else %}<tr><td colspan="6"><div class="empty-state"><span>◎</span><h3>No sources found</h3><p>Change the filters or add a new publisher.</p></div></td></tr>{% endfor %}
         </tbody>

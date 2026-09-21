@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 import re
 
 from flask import jsonify, request
+from translation import (COUNTRY_LANGUAGES, LANGUAGES, resolve_language,
+                         translate_articles, TranslationUnavailable)
 
 
 def register_api(app, countries, topics, load_articles, deduplicate_articles,
@@ -40,7 +42,9 @@ def register_api(app, countries, topics, load_articles, deduplicate_articles,
             return ('', 204)
         return jsonify({
             'countries': [
-                {'id': key, **value}
+                {'id': key, **value, 'languages': [
+                    {'name': name, 'code': LANGUAGES[name]}
+                    for name in COUNTRY_LANGUAGES[key]]}
                 for key, value in countries.items()
             ]
         })
@@ -67,13 +71,22 @@ def register_api(app, countries, topics, load_articles, deduplicate_articles,
         except ValueError:
             return jsonify({'error': 'page and limit must be integers'}), 400
 
+        language = resolve_language(country, request.args.get('language'))
+        if language is None:
+            return jsonify({'error': 'Unsupported language for this country',
+                            'available': ['Original', *COUNTRY_LANGUAGES[country]]}), 400
         articles = load_articles(country, topic)
         total = len(articles)
         start = (page - 1) * limit
+        try:
+            translated = translate_articles(articles[start:start + limit], language)
+        except TranslationUnavailable:
+            return jsonify({'error': 'Translation temporarily unavailable',
+                            'code': 'translation_unavailable'}), 503
         return jsonify({
-            'data': [api_article(article) for article in articles[start:start + limit]],
+            'data': [api_article(article) for article in translated],
             'pagination': api_pagination(page, limit, total),
-            'filters': {'country': country, 'topic': topic},
+            'filters': {'country': country, 'topic': topic, 'language': language},
         })
 
     @app.route('/api/v1/search', methods=['GET', 'OPTIONS'])

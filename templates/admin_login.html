@@ -8,15 +8,15 @@
       <h1>Credible stories<br>start with trusted sources.</h1>
       <p>Review publishers, maintain regional coverage and protect the quality of every reader's daily briefing.</p>
     </div>
-    <small>Secure administrator workspace</small>
+    <small>Secure team workspace</small>
   </section>
   <section class="auth-panel auth-form-panel">
-    <div class="eyebrow">Administrator access</div>
+    <div class="eyebrow">Newsroom access</div>
     <h2>Welcome back</h2>
-    <p class="auth-copy">Sign in to manage the Unganishwa source network.</p>
+    <p class="auth-copy">Sign in to review news and manage your assigned categories.</p>
     {% if error %}<div class="notice error-box" role="alert"><span>!</span>{{ error }}</div>{% endif %}
-    <form method="post" class="admin-form">
-      <label>Username<input type="text" name="username" value="admin" autocomplete="username" required></label>
+    <form method="post" class="admin-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Username<input type="text" name="username" autocomplete="username" required></label>
       <label>Password
         <div class="password-field"><input id="admin-password" type="password" name="password" autocomplete="current-password" placeholder="Enter your password" required><button type="button" class="password-toggle" aria-label="Show password" onclick="togglePassword()">Show</button></div>
       </label>
