@@ -634,7 +634,7 @@ def analytics():
          WHERE b.country_code = d.country_code) AS visitors
         FROM visitor_country_daily d GROUP BY d.country_code ORDER BY visits DESC''').fetchall()
     origin_names = {info['code']: info['name'] for info in COUNTRIES.values()}
-    origin_names['Unknown'] = 'Unknown country'
+    origin_names['Unknown'] = 'Diaspora'
     leader = rows[0] if rows and rows[0]['visits'] else None
     return render_template('analytics.html', stats=rows, total_visits=total_visits,
                            total_visitors=total_visitors,
