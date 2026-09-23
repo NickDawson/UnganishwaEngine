@@ -1,6 +1,6 @@
 {% extends 'newsroom_base.html' %}
 {% block newsroom_content %}
-<div class="eyebrow">Newsroom / Add news</div><h1>Add a story</h1><p class="nr-muted">The story will be visible as Uncategorized until a team member assigns its category.</p>
+<div class="eyebrow">Newsroom / Add news</div><h1>Add a story</h1><p class="nr-muted">The story appears immediately. You can assign or change its category afterwards.</p>
 <form method="post" class="nr-card nr-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-<label>Headline<input name="title" required maxlength="500"></label><div class="nr-grid"><label>Publisher<input name="source" required maxlength="200"></label><label>Country<select name="country" required>{% for key, info in countries.items() %}<option value="{{ key }}">{{ info.name }}</option>{% endfor %}</select></label></div><label>Original article URL<input name="link" type="url" required></label><label>Summary<textarea name="summary" maxlength="10000"></textarea></label><div><button>Add to Uncategorized</button></div></form>
+<label>Headline<input name="title" required maxlength="500"></label><div class="nr-grid"><label>Publisher<input name="source" required maxlength="200"></label><label>Country<select name="country" required>{% for key, info in countries.items() %}<option value="{{ key }}">{{ info.name }}</option>{% endfor %}</select></label></div><label>Original article URL<input name="link" type="url" required></label><label>Summary<textarea name="summary" maxlength="10000"></textarea></label><div><button>Add to Top Stories</button></div></form>
 {% endblock %}

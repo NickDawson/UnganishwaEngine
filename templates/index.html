@@ -12,7 +12,7 @@
       <select aria-label="Country" onchange="location.href=this.options[this.selectedIndex].dataset.url">
         {% for key, info in countries.items() %}<option value="{{ key }}" data-url="{{ url_for('edition', country=key, topic_slug=topic_slugs[topic], language=language) }}" {% if key == country %}selected{% endif %}>{{ info.name }} · {{ info.code }}</option>{% endfor %}
       </select>
-      <span class="edition-status"><i></i> Live edition</span>
+      <span class="edition-status"><i></i> News edition</span>
     </div>
     <nav class="topics" aria-label="News topics">
       {% for item in topics %}<a class="topic {% if item == topic %}active{% endif %}" href="{{ url_for('edition', country=country, topic_slug=topic_slugs[item], language=language) }}">{{ item }}</a>{% endfor %}
@@ -23,7 +23,7 @@
 <main class="container editorial-page">
   <header class="edition-head">
     <div><div class="eyebrow">{{ country_info.name }} edition · {{ language }}</div><h1>The daily briefing.</h1></div>
-    <div class="edition-meta"><strong>{{ updated }}</strong><span>UTC · {{ articles|length }} stories</span></div>
+    <div class="edition-meta"><strong>{% if updated %}Updated {{ updated }}{% else %}Awaiting news{% endif %}</strong><span>{% if updated %}UTC · {% endif %}{{ articles|length }} stories</span></div>
   </header>
 
   {% if articles %}

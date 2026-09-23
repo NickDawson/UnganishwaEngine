@@ -56,7 +56,7 @@ COUNTRIES = {
     'south-sudan': {'name': 'South Sudan', 'code': 'SS', 'accent': 'gold'},
 }
 
-TOPICS = ['Top Stories', 'Uncategorized', 'World', 'National', 'Business', 'Technology',
+TOPICS = ['Top Stories', 'World', 'National', 'Business', 'Technology',
           'Entertainment', 'Sports', 'Science', 'Health']
 TOPIC_SLUGS = {topic: re.sub(r'[^a-z0-9]+', '-', topic.lower()).strip('-') for topic in TOPICS}
 SLUG_TOPICS = {slug: topic for topic, slug in TOPIC_SLUGS.items()}
@@ -536,6 +536,9 @@ def edition(country, topic_slug):
 def render_edition(country, topic, language='Original'):
     language = resolve_language(country, language) or 'Original'
     articles = load_articles(country, topic)
+    timestamps = [datetime.fromisoformat(article['updated_at']).astimezone(timezone.utc)
+                  for article in articles if article.get('updated_at')]
+    updated = max(timestamps).strftime('%d %b %Y · %H:%M') if timestamps else None
     country_name = COUNTRIES[country]['name']
     canonical_path = '/' if country == 'tanzania' and topic == 'Top Stories' else f'/news/{country}/{TOPIC_SLUGS[topic]}'
     seo_title = ('Unganishwa | East Africa News and Daily Briefings' if canonical_path == '/'
@@ -553,7 +556,7 @@ def render_edition(country, topic, language='Original'):
                            topics=TOPICS, topic=topic, language=language,
                            languages=['Original', *COUNTRY_LANGUAGES[country]],
                            interests=['Top Stories', 'Business', 'Technology'],
-                           updated=datetime.now(timezone.utc).strftime('%H:%M'), topic_slugs=TOPIC_SLUGS,
+                           updated=updated, topic_slugs=TOPIC_SLUGS,
                            seo_title=seo_title, seo_description=seo_description,
                            canonical_url=f'{PUBLIC_SITE_URL}{canonical_path}', structured_data=item_list)
     try:

@@ -79,6 +79,40 @@ class NewsroomTests(unittest.TestCase):
         self.assertIn('admin', self.client.get('/admin/news/' + story['id']).text)
         self.assertEqual(self.client.get('/api/v1/articles?country=tanzania&topic=Business').json['data'][0]['topic'], 'Business')
 
+    def test_archive_categories_and_search_beyond_200_stories(self):
+        story = self.seed()
+        with self.room.db() as db:
+            self.room.sql(db, """UPDATE newsroom_articles SET status = 'published',
+                topic = 'Business', created_at = ? WHERE id = ?""",
+                ('2020-01-01T00:00:00+00:00', story['id']))
+        self.room.ingest(self.source, [
+            {'title': 'Recent report ' + str(i), 'link': 'https://example.com/recent/' + str(i)}
+            for i in range(205)])
+        self.assertEqual(len(self.room.public_articles('tanzania', 'Top Stories')), 206)
+        self.assertEqual(self.room.public_articles('tanzania', 'Business')[0]['id'], story['id'])
+        self.assertIn(self.article['title'], self.client.get('/news/tanzania/business').text)
+        self.assertIn(self.article['title'], self.client.get('/search?q=business').text)
+        result = self.client.get('/api/v1/search?q=business').json
+        self.assertEqual(result['pagination']['total'], 1)
+        self.assertEqual(result['data'][0]['title'], self.article['title'])
+        self.assertEqual(self.client.get('/api/v1/articles?page=11').json['pagination']['total'], 206)
+
+    def test_empty_public_requests_do_not_collect_news(self):
+        with patch.object(self.module, 'collect_news_source') as collect:
+            for path in ('/', '/news/tanzania/business', '/search?q=business',
+                         '/api/v1/articles', '/api/v1/search?q=business'):
+                self.assertEqual(self.client.get(path).status_code, 200, path)
+            collect.assert_not_called()
+        self.assertIn('Awaiting news', self.client.get('/').text)
+
+    def test_edition_timestamp_comes_from_stored_news(self):
+        story = self.seed()
+        with self.room.db() as db:
+            self.room.sql(db, 'UPDATE newsroom_articles SET updated_at = ? WHERE id = ?',
+                          ('2020-01-02T03:04:00+00:00', story['id']))
+        for _ in range(2):
+            self.assertIn('Updated 02 Jan 2020 · 03:04', self.client.get('/').text)
+
     def test_staff_scope_and_revocation(self):
         story = self.seed()
         self.login()
@@ -130,6 +164,19 @@ class NewsroomTests(unittest.TestCase):
         self.assertEqual(self.client.post('/admin/news/add', data={
             'csrf_token': self.token(), 'country': 'tanzania', 'title': 'Manual news', 'source': 'Publisher',
             'link': 'javascript:alert(1)'}).status_code, 400)
+
+    def test_malformed_admin_session_returns_to_login(self):
+        self.login()
+        with self.client.session_transaction() as session:
+            session['admin_last_seen'] = 'invalid'
+        response = self.client.get('/admin/news')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.location, '/admin/login')
+
+        self.login()
+        with self.client.session_transaction() as session:
+            session['csrf_token'] = 123
+        self.assertEqual(self.client.post('/admin/sources').status_code, 400)
 
     def test_signed_websub_delivery_and_paused_source(self):
         with self.room.db() as db:

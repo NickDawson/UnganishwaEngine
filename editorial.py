@@ -146,12 +146,14 @@ class Newsroom:
             return
         if request.method == 'POST':
             supplied = request.form.get('csrf_token', '')
-            if not supplied or not hmac.compare_digest(supplied.encode(), session.get('csrf_token', '').encode()):
+            expected = session.get('csrf_token')
+            if not isinstance(expected, str) or not supplied or not hmac.compare_digest(supplied.encode(), expected.encode()):
                 abort(400, 'The form expired. Reload the page and try again.')
         if request.endpoint == 'admin_login':
             return
         user = self.current_user()
-        if not user or time.time() - session.get('admin_last_seen', 0) > 1800:
+        last_seen = session.get('admin_last_seen')
+        if not user or not isinstance(last_seen, (int, float)) or time.time() - last_seen > 1800:
             session.clear()
             g.newsroom_user = None
             return redirect(url_for('admin_login'))
@@ -171,10 +173,13 @@ class Newsroom:
         inserted = 0
         with self.db() as db:
             if source.get('id') is not None:
-                current = self.sql(db, 'SELECT country, is_active FROM trusted_sources WHERE id = ?',
+                current = self.sql(db, 'SELECT country, is_active, topic FROM trusted_sources WHERE id = ?',
                                    (source['id'],)).fetchone()
                 if not current or not current['is_active'] or current['country'] != source['country']:
                     return 0
+            default_topic = source.get('topic') or (current['topic'] if source.get('id') is not None else None)
+            if default_topic not in self.categories:
+                default_topic = None
             for article in articles:
                 link = article_url(article.get('link', ''))
                 title = plain_text(article.get('title'), 500)
@@ -182,11 +187,11 @@ class Newsroom:
                     continue
                 identity = hashlib.sha256((source['country'] + '\n' + link).encode()).hexdigest()
                 cursor = self.sql(db, '''INSERT INTO newsroom_articles
-                    (id, source_id, source, country, title, summary, link, published, created_at, updated_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING''',
+                    (id, source_id, source, country, title, summary, link, published, created_at, updated_at, topic, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uncategorized') ON CONFLICT DO NOTHING''',
                     (identity, source.get('id'), source['source_name'], source['country'], title,
                      plain_text(article.get('summary'), 10000), link,
-                     plain_text(article.get('published') or 'Recently', 200), now(), now()))
+                     plain_text(article.get('published') or 'Recently', 200), now(), now(), None))
                 if cursor.rowcount == 1:
                     inserted += 1
                     self.sql(db, """INSERT INTO newsroom_audit
@@ -196,16 +201,25 @@ class Newsroom:
         return inserted
 
     def public_articles(self, country, topic):
-        query = "SELECT * FROM newsroom_articles WHERE status IN ('uncategorized', 'published') AND country = ?"
-        parameters = [country]
+        # Filter the complete archive; source defaults never override editorial state.
+        query = """SELECT * FROM newsroom_articles
+            WHERE status IN ('uncategorized', 'published') AND country = ?"""
+        params = [country]
         if topic == 'Uncategorized':
-            query += " AND status = 'uncategorized'"
+            query += " AND (status = 'uncategorized' OR topic IS NULL)"
         elif topic != 'Top Stories':
-            query += ' AND topic = ?'
-            parameters.append(topic)
+            query += " AND status = 'published' AND topic = ?"
+            params.append(topic)
+        query += ' ORDER BY created_at DESC, id'
         with self.db() as db:
-            rows = self.sql(db, query + ' ORDER BY created_at DESC, id LIMIT 200', parameters).fetchall()
-        return [{**dict(row), 'topic': row['topic'] or 'Uncategorized'} for row in rows]
+            rows = self.sql(db, query, tuple(params)).fetchall()
+        articles = []
+        for row in rows:
+            article = dict(row)
+            if article['status'] == 'uncategorized' or article['topic'] not in self.categories:
+                article['topic'] = 'Uncategorized'
+            articles.append(article)
+        return articles
 
     def inbox(self):
         user = self.current_user()
@@ -320,7 +334,7 @@ class Newsroom:
             count = self.ingest({'source_name': source[:200], 'country': country},
                                [{'title': title, 'summary': request.form.get('summary', ''), 'link': link}],
                                actor=user['username'])
-            flash('Article added to Uncategorized.' if count else 'This article is already in the inbox.')
+            flash('Article added and visible to readers.' if count else 'This article is already in the inbox.')
             return redirect(url_for('newsroom.inbox'))
         return render_template('newsroom_add.html', countries=countries)
 
@@ -391,7 +405,7 @@ class Newsroom:
             abort(404)
         try:
             count = self.collect_source(dict(source))
-            flash(f'{count} new articles added to Uncategorized.')
+            flash(f'{count} new articles collected and visible to readers.')
         except Exception:
             self.app.logger.warning('News collection failed for source %s', source_id)
             flash('Could not collect this source. Check its feed URL and try again.')
