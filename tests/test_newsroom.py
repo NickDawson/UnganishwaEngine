@@ -61,6 +61,33 @@ class NewsroomTests(unittest.TestCase):
         with self.room.db() as db:
             return dict(self.room.sql(db, 'SELECT * FROM newsroom_articles').fetchone())
 
+    def test_html_summary_excludes_css_and_neighboring_stories(self):
+        html = """<section><style>.elementor-15437 {display:flex}</style>
+        <article><h2><a href='/one'>First important local news story</a></h2>
+        <div class='elementor-post__excerpt'><style>.bad{color:red}</style>
+        <p>Correct first summary.</p><script>alert('bad')</script></div></article>
+        <article><h2><a href='/two'>Second important local news story</a></h2>
+        <p>Different second summary.</p></article></section>"""
+        with patch.object(self.module, 'fetch_html', return_value=html):
+            articles = self.module.extract_html_articles('https://example.com', 'Test', 'tanzania', 'Uncategorized')
+        self.assertEqual(articles[0]['summary'], 'Correct first summary.')
+        self.assertEqual(articles[1]['summary'], 'Different second summary.')
+        self.room.ingest(self.source, articles)
+        response = self.client.get('/api/v1/articles?country=tanzania').json
+        self.assertEqual({a['summary'] for a in response['data']},
+                         {'Correct first summary.', 'Different second summary.'})
+
+    def test_html_without_excerpt_uses_neutral_fallback(self):
+        html = """<div><style>.bad{display:flex}</style><h2>
+        <a href='/one'>An important local news headline</a></h2></div>"""
+        with patch.object(self.module, 'fetch_html', return_value=html):
+            articles = self.module.extract_html_articles('https://example.com', 'Test', 'tanzania', 'Uncategorized')
+        self.assertEqual(articles[0]['summary'], 'Read the full report from the original source.')
+
+    def test_ingest_removes_non_content_elements(self):
+        self.article['summary'] = '<style>.bad{display:flex}</style><p>Real summary</p><script>bad()</script><template>hidden</template>'
+        self.assertEqual(self.seed()['summary'], 'Real summary')
+
     def test_public_uncategorized_then_category_and_replay(self):
         story = self.seed()
         self.assertEqual(self.room.public_articles('tanzania', 'Uncategorized')[0]['topic'], 'Uncategorized')

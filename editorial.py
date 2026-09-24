@@ -36,7 +36,10 @@ def article_url(value):
 
 
 def plain_text(value, limit):
-    return BeautifulSoup(str(value or ''), 'html.parser').get_text(' ', strip=True)[:limit]
+    soup = BeautifulSoup(str(value or ''), 'html.parser')
+    for node in soup.select('script, style, noscript, template'):
+        node.decompose()
+    return ' '.join(soup.stripped_strings)[:limit]
 
 
 class Newsroom:

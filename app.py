@@ -13,7 +13,6 @@ from urllib.parse import urljoin
 import requests
 from bs4 import BeautifulSoup
 from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
-from scrapy import Selector
 from werkzeug.security import check_password_hash, generate_password_hash
 from api import register_api
 from editorial import Newsroom
@@ -666,51 +665,30 @@ def extract_html_articles(site_url, source_name, country, feed_topic):
         return []
     candidates = []
     seen = set()
+    soup = BeautifulSoup(html, 'html.parser')
+    for node in soup.select('script, style, noscript, template, nav, footer, form'):
+        node.decompose()
 
-    selector = Selector(text=html)
-    links = selector.css('article a, h2 a, h3 a, .story a, .headline a, .item a, .news-item a').getall()
-
-    if not links:
-        soup = BeautifulSoup(html, 'html.parser')
-        for link in soup.select('article a, h2 a, h3 a, .story a, .headline a, .item a, .news-item a'):
-            href = link.get('href') or ''
-            text = ' '.join(link.stripped_strings)
-            if not href or len(text) < 20 or len(text) > 180:
-                continue
-            full_url = urljoin(site_url, href)
-            if full_url in seen:
-                continue
-            seen.add(full_url)
-            parent = link.find_parent(['article', 'li', 'div', 'section'])
-            summary = parent.get_text(' ', strip=True) if parent else text
-            summary = ' '.join(summary.split())
-            if not summary or summary == text:
-                summary = 'Read the latest local story from this source.'
-            candidates.append({
-                'title': text,
-                'summary': summary[:220],
-                'source': source_name,
-                'country': country,
-                'topic': feed_topic,
-                'link': full_url,
-                'published': 'Recently',
-            })
-        return deduplicate_articles(candidates[:8])
-
-    for node in selector.css('article a, h2 a, h3 a, .story a, .headline a, .item a, .news-item a'):
-        href = node.attrib.get('href', '')
-        text = ' '.join(node.css('::text').getall()).strip()
+    for link in soup.select('article a, h2 a, h3 a, .story a, .headline a, .item a, .news-item a'):
+        href = link.get('href') or ''
+        text = ' '.join(link.stripped_strings)
         if not href or len(text) < 20 or len(text) > 180:
             continue
         full_url = urljoin(site_url, href)
         if full_url in seen:
             continue
         seen.add(full_url)
-        parent = node.xpath('ancestor::article | ancestor::li | ancestor::div | ancestor::section')
-        summary = ' '.join(parent.xpath('.//text()').getall()).strip() if parent else text
+        # Stay inside this story card; ancestor-wide text mixes unrelated stories
+        # and can include page CSS before truncation.
+        card = link.find_parent('article') or link.find_parent(['li', 'div', 'section'])
+        summary = ''
+        if card:
+            excerpt = card.select_one('.elementor-post__excerpt, .entry-summary, .excerpt, .summary, .description')
+            nodes = [excerpt] if excerpt else card.select('p')
+            summary = ' '.join(' '.join(node.stripped_strings) for node in nodes)
         summary = ' '.join(summary.split())
         if not summary or summary == text:
-            summary = 'Read the latest local story from this source.'
+            summary = 'Read the full report from the original source.'
         candidates.append({
             'title': text,
             'summary': summary[:220],
