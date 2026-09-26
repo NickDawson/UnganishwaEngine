@@ -146,6 +146,12 @@ def init_analytics():
         execute_sql(db, '''CREATE TABLE IF NOT EXISTS reader_feedback (
             id TEXT PRIMARY KEY, name TEXT NOT NULL, comment TEXT NOT NULL,
             country TEXT NOT NULL, created_at TEXT NOT NULL)''')
+        if DATABASE_URL:
+            execute_sql(db, "ALTER TABLE reader_feedback ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'unknown'")
+        else:
+            columns = {row['name'] for row in execute_sql(db, 'PRAGMA table_info(reader_feedback)').fetchall()}
+            if 'source' not in columns:
+                execute_sql(db, "ALTER TABLE reader_feedback ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'")
         for region in COUNTRIES:
             execute_sql(db, 'INSERT INTO portal_stats (region) VALUES (?) ON CONFLICT (region) DO NOTHING', (region,))
         db.commit()
@@ -628,8 +634,8 @@ def public_feedback():
                 errors[field] = f'Please enter {field} (up to {maximum} characters).'
         if not errors:
             db = get_db()
-            execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at) VALUES (?, ?, ?, ?, ?)',
-                        (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat()))
+            execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at, source) VALUES (?, ?, ?, ?, ?, ?)',
+                        (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat(), 'web'))
             db.commit()
             session['feedback_received'] = True
             return redirect(url_for('public_feedback'), code=303)
@@ -654,7 +660,7 @@ def admin_feedback():
     total = execute_sql(db, 'SELECT COUNT(*) AS count FROM reader_feedback' + where, params).fetchone()['count']
     pages = max(1, (total + 19) // 20)
     page = min(page, pages)
-    feedback = execute_sql(db, 'SELECT name, country, comment, created_at FROM reader_feedback' + where +
+    feedback = execute_sql(db, 'SELECT name, country, comment, created_at, source FROM reader_feedback' + where +
                            ' ORDER BY created_at DESC, id DESC LIMIT 20 OFFSET ?',
                            [*params, (page - 1) * 20]).fetchall()
     return render_template('admin_feedback.html', feedback=feedback, total=total,

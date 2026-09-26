@@ -12,7 +12,7 @@
 <section aria-label="Reader submissions">
 {% for item in feedback %}
   <article class="nr-card feedback-card">
-    <header class="nr-head"><div><h2 dir="auto">{{ item.name }}</h2><span class="nr-pill" dir="auto">{{ item.country }}</span></div><time class="nr-muted" datetime="{{ item.created_at }}">{{ item.created_at[:10] }} · {{ item.created_at[11:16] }} UTC</time></header>
+    <header class="nr-head"><div><h2 dir="auto">{{ item.name }}</h2><span class="nr-pill" dir="auto">{{ item.country }}</span> <span class="nr-pill">Source: {{ {'web': 'Web', 'app': 'App'}.get(item.source, 'Unknown') }}</span></div><time class="nr-muted" datetime="{{ item.created_at }}">{{ item.created_at[:10] }} · {{ item.created_at[11:16] }} UTC</time></header>
     <p class="feedback-comment" dir="auto">{{ item.comment }}</p>
   </article>
 {% else %}

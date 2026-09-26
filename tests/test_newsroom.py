@@ -156,6 +156,7 @@ class NewsroomTests(unittest.TestCase):
         first = self.client.get('/admin/feedback')
         self.assertEqual(first.status_code, 200)
         self.assertIn('21 submissions', first.text)
+        self.assertIn('Source: App', first.text)
         self.assertIn('Page 1 of 2', first.text)
         self.assertIn('&lt;script&gt;alert(1)&lt;/script&gt;', first.text)
         self.assertNotIn('<script>alert(1)</script>', first.text)
@@ -183,7 +184,21 @@ class NewsroomTests(unittest.TestCase):
         self.login()
         admin = self.client.get('/admin/feedback?q=Web+Reader')
         self.assertIn('More local news please', admin.text)
+        self.assertIn('Source: Web', admin.text)
         self.assertIn('Kenya', admin.text)
+
+    def test_feedback_source_migration_preserves_old_rows(self):
+        import sqlite3
+        with tempfile.TemporaryDirectory() as directory:
+            path = os.path.join(directory, 'legacy.sqlite3')
+            with sqlite3.connect(path) as db:
+                db.execute('CREATE TABLE reader_feedback (id TEXT PRIMARY KEY, name TEXT, comment TEXT, country TEXT, created_at TEXT)')
+                db.execute("INSERT INTO reader_feedback VALUES ('old', 'Reader', 'Hello', 'Kenya', '2026-09-01')")
+            with patch.object(self.module, 'DATABASE', path):
+                self.module.init_analytics()
+                self.module.init_analytics()
+            with sqlite3.connect(path) as db:
+                self.assertEqual(db.execute('SELECT comment, source FROM reader_feedback').fetchone(), ('Hello', 'unknown'))
 
     def test_staff_scope_and_revocation(self):
         story = self.seed()

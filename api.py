@@ -166,8 +166,8 @@ def register_api(app, countries, topics, load_articles, deduplicate_articles,
                 return jsonify({'error': f'{field} is required and must be at most {maximum} characters'}), 400
             values[field] = value.strip()
         db = get_db()
-        execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at) VALUES (?, ?, ?, ?, ?)',
-                    (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat()))
+        execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at, source) VALUES (?, ?, ?, ?, ?, ?)',
+                    (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat(), 'app'))
         db.commit()
         return jsonify({'status': 'received'}), 201
 
