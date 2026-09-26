@@ -1,7 +1,7 @@
 {% extends 'newsroom_base.html' %}
 {% block newsroom_content %}
 <header class="nr-head">
-  <div><div class="eyebrow">Reader feedback</div><h1>Listen to your readers.</h1><p class="nr-muted">Names, countries and comments sent from the Unganishwa app. Visible to administrators only.</p></div>
+  <div><div class="eyebrow">Reader feedback</div><h1>Listen to your readers.</h1><p class="nr-muted">Names, countries and comments sent from the Unganishwa app and website. Visible to administrators only.</p></div>
   <span class="nr-pill">{{ total }} submission{{ '' if total == 1 else 's' }}</span>
 </header>
 <form class="nr-card nr-actions" method="get" action="{{ url_for('admin_feedback') }}" role="search">
@@ -16,7 +16,7 @@
     <p class="feedback-comment" dir="auto">{{ item.comment }}</p>
   </article>
 {% else %}
-  <div class="nr-card"><h2>{{ 'No matching feedback' if q else 'No feedback yet' }}</h2><p class="nr-muted">{{ 'Try another name, country or phrase.' if q else 'When readers send feedback from the app, it will appear here.' }}</p></div>
+  <div class="nr-card"><h2>{{ 'No matching feedback' if q else 'No feedback yet' }}</h2><p class="nr-muted">{{ 'Try another name, country or phrase.' if q else 'When readers send feedback from the app or website, it will appear here.' }}</p></div>
 {% endfor %}
 </section>
 {% if pages > 1 %}

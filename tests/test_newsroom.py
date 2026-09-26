@@ -167,6 +167,24 @@ class NewsroomTests(unittest.TestCase):
         self.assertEqual(self.client.get('/admin/feedback?page=invalid').status_code, 200)
         self.assertIn('Page 2 of 2', self.client.get('/admin/feedback?page=99999').text)
 
+    def test_public_feedback_validates_and_reaches_admin(self):
+        page = self.client.get('/feedback')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('Share your feedback', page.text)
+        self.assertIn('href="/feedback"', self.client.get('/').text)
+        invalid = self.client.post('/feedback', data={'name': 'Asha', 'country': '', 'comment': 'Hello'})
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn('value="Asha"', invalid.text)
+        self.assertIn('aria-invalid="true"', invalid.text)
+        response = self.client.post('/feedback', data={'name': 'Web Reader', 'country': 'Kenya', 'comment': 'More local news please'})
+        self.assertEqual(response.status_code, 303)
+        self.assertIn('Thank you for your feedback!', self.client.get(response.location).text)
+        self.assertNotIn('Thank you for your feedback!', self.client.get('/feedback').text)
+        self.login()
+        admin = self.client.get('/admin/feedback?q=Web+Reader')
+        self.assertIn('More local news please', admin.text)
+        self.assertIn('Kenya', admin.text)
+
     def test_staff_scope_and_revocation(self):
         story = self.seed()
         self.login()

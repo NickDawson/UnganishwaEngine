@@ -623,7 +623,7 @@
           >unganishwa<span>.</span></a
         >
         <div class="tagline">Your region, your world.</div>
-        <nav class="primary-nav"><a href="{{ url_for('index') }}">Home</a><a href="{{ url_for('index') }}#latest">Latest</a></nav>
+        <nav class="primary-nav"><a href="{{ url_for('index') }}">Home</a><a href="{{ url_for('index') }}#latest">Latest</a><a href="{{ url_for('public_feedback') }}">Feedback</a></nav>
         <a class="analytics-link" href="{{ analytics_url }}">Insights</a>
         <a class="nav-download" href="#download-app">Get the app</a>
         <form action="{{ url_for('search')}}" method="GET">
@@ -647,7 +647,7 @@
 {% block content %}{% endblock %}
     <footer>
       <div class="container footer-grid">
-        <div><strong>unganishwa.</strong><br />Independent context for East Africa, in the language you choose.<div class="footer-links"><a href="/about">About</a><a href="/contact">Contact</a><a href="{{ url_for('admin_login') }}">Admin</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/editorial-policy">Editorial policy</a><a href="/corrections">Corrections</a></div></div>
+        <div><strong>unganishwa.</strong><br />Independent context for East Africa, in the language you choose.<div class="footer-links"><a href="/about">About</a><a href="/contact">Contact</a><a href="{{ url_for('public_feedback') }}">Feedback</a><a href="{{ url_for('admin_login') }}">Admin</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/editorial-policy">Editorial policy</a><a href="/corrections">Corrections</a></div></div>
         <div class="footer-actions">
           {% if sponsor_name and sponsor_url %}<a
             class="sponsor-link"

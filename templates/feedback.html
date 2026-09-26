@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<main class="container feedback-page">
+  <section class="feedback-intro"><div class="eyebrow">Your voice matters</div><h1>Help shape<br>Unganishwa.</h1><p>A suggestion, a question or something we can do better? We would love to hear from you.</p><div class="feedback-note">Your name, country and comment are shared privately with our team to improve Unganishwa. They will not appear publicly.</div></section>
+  <section class="feedback-form-panel" aria-label="Share feedback">
+    {% if received %}<div class="feedback-success" role="status"><strong>Thank you for your feedback!</strong><p>Your message has been received by our team.</p><a href="{{ url_for('index') }}">Back to the news →</a></div>{% else %}
+    <h2>Share your feedback</h2>
+    {% if errors %}<p role="alert" class="feedback-error">Please check the highlighted fields below.</p>{% endif %}
+    <form action="{{ url_for('public_feedback') }}" method="post">
+      {% for field, label, limit in [('name', 'Your name', 100), ('country', 'Your country', 100), ('comment', 'Your comment', 2000)] %}
+      <div class="feedback-field"><label for="feedback-{{ field }}">{{ label }}</label>
+      {% if field == 'comment' %}<textarea id="feedback-{{ field }}" name="{{ field }}" rows="7" maxlength="{{ limit }}" required {% if errors.get(field) %}aria-invalid="true" aria-describedby="error-{{ field }}"{% endif %}>{{ values[field] }}</textarea>{% else %}<input id="feedback-{{ field }}" name="{{ field }}" value="{{ values[field] }}" maxlength="{{ limit }}" autocomplete="{{ 'name' if field == 'name' else 'country-name' }}" required {% if errors.get(field) %}aria-invalid="true" aria-describedby="error-{{ field }}"{% endif %}>{% endif %}
+      {% if errors.get(field) %}<small class="feedback-error" id="error-{{ field }}">{{ errors[field] }}</small>{% endif %}</div>
+      {% endfor %}
+      <small class="feedback-hint">Up to 2,000 characters. Please do not include sensitive personal information.</small>
+      <button type="submit">Send feedback ↗</button>
+    </form>
+    {% endif %}
+  </section>
+</main>
+<style>
+.feedback-page{display:grid;grid-template-columns:1fr 1fr;gap:clamp(24px,6vw,90px);padding-top:64px;padding-bottom:80px}.feedback-intro h1{font:700 clamp(42px,6vw,72px)/1.05 'Space Grotesk';letter-spacing:-2px;margin:18px 0 24px}.feedback-intro p{font-size:18px;line-height:1.7;color:var(--muted)}.feedback-note{border-top:1px solid var(--line);padding-top:24px;margin-top:32px;line-height:1.7;color:var(--muted);font-size:14px}.feedback-form-panel{background:white;border:1px solid var(--line);padding:clamp(22px,4vw,40px);border-radius:12px;min-width:0}.feedback-form-panel h2{margin:0 0 26px;font-size:24px}.feedback-field{display:grid;gap:9px;margin-bottom:20px}.feedback-field label{font-weight:700;font-size:14px}.feedback-field input,.feedback-field textarea{width:100%;box-sizing:border-box;border:1px solid #baccc5;border-radius:6px;padding:13px;font:inherit;color:var(--ink);background:#fff}.feedback-field textarea{resize:vertical}.feedback-field input:focus,.feedback-field textarea:focus{outline:2px solid var(--teal);outline-offset:2px}.feedback-field [aria-invalid=true]{border-color:#a22f26}.feedback-error{color:#a22f26}.feedback-hint{display:block;color:var(--muted);line-height:1.6}.feedback-form-panel button{margin-top:24px;background:var(--teal);color:white;border:0;border-radius:6px;padding:15px 24px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;width:100%}.feedback-success{background:#edf7f0;padding:24px;line-height:1.7;border-radius:8px}.feedback-success strong{font-size:24px}.feedback-success a{color:var(--teal);font-weight:700}@media(max-width:700px){.feedback-page{grid-template-columns:1fr;padding-top:32px;gap:28px}.feedback-intro h1{font-size:44px}}
+</style>
+{% endblock %}

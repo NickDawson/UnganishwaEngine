@@ -617,6 +617,27 @@ def information_page():
                            seo_description=page['intro'], canonical_url=f'{PUBLIC_SITE_URL}/{slug}')
 
 
+@app.route('/feedback', methods=['GET', 'POST'])
+def public_feedback():
+    values = {field: '' for field in ('name', 'country', 'comment')}
+    errors = {}
+    if request.method == 'POST':
+        for field, maximum in [('name', 100), ('country', 100), ('comment', 2000)]:
+            values[field] = request.form.get(field, '').strip()
+            if not values[field] or len(values[field]) > maximum:
+                errors[field] = f'Please enter {field} (up to {maximum} characters).'
+        if not errors:
+            db = get_db()
+            execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at) VALUES (?, ?, ?, ?, ?)',
+                        (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat()))
+            db.commit()
+            session['feedback_received'] = True
+            return redirect(url_for('public_feedback'), code=303)
+    received = session.pop('feedback_received', False) if request.method == 'GET' else False
+    return render_template('feedback.html', values=values, errors=errors, received=received,
+                           seo_title='Share your feedback | Unganishwa'), 400 if errors else 200
+
+
 @app.route('/admin/feedback')
 def admin_feedback():
     term = request.args.get('q', '').strip()[:200]
