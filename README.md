@@ -163,8 +163,9 @@ worker clears it. Tests mock Google responses and do not incur API charges:
 
 ## Newsroom, daily categorization and WebSub
 
-Newly collected or manually submitted articles are stored as **Uncategorized**
-and are immediately visible on the public website/API. A source's configured
+Newly collected or manually submitted articles are immediately visible on the
+public website/API and automatically categorized when their subject is clear.
+Uncertain stories remain **Uncategorized / Needs review**. A source's configured
 `topic` does not categorize its articles. The newsroom inbox `/admin/news` defaults
 to all arrivals **received today**, using `NEWSROOM_TIMEZONE` (default
 `Africa/Nairobi`). Clear the date or select **Show all dates** to review older items.
@@ -213,7 +214,7 @@ In **WebSub**, connect an active feed. The publisher must advertise a hub and se
 URL in HTTP Link headers or feed/HTML links. `PUBLIC_SITE_URL` must be the publicly
 reachable HTTPS site address; allow GET/POST to `/websub/callback/<id>` through the
 proxy. A connection is active only after the hub verifies the challenge. Signed
-RSS/Atom deliveries enter Uncategorized; duplicate URLs within a country do not
+RSS/Atom deliveries use automatic categorization; duplicate URLs within a country do not
 reset editorial decisions. Invalid signatures, expired subscriptions and paused
 sources are rejected. **Disconnect** requests hub unsubscribe verification.
 Publishers without WebSub continue through polling. Implemented against:
@@ -253,3 +254,33 @@ an external lookup service. VPNs/proxies can change the inferred country. The
 same anonymous browser can appear under multiple countries over time.
 Cloudflare setup: https://developers.cloudflare.com/network/ip-geolocation/
 GeoLite data: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data/
+
+### Automatic news categories
+
+New arrivals from feeds, WebSub, source collection and manual entry are classified
+from their cleaned title and summary. The default `NEWS_AUTO_CATEGORIZE=local`
+uses conservative English/Swahili keyword rules, requiring multiple distinct
+signals and a clear lead. These rules are heuristics, not semantic AI, and may
+miss paraphrases or misread context. Ambiguous articles stay `uncategorized`
+(shown as **Needs review**) and remain visible in Top Stories as before.
+Admins can correct categories; decisions and explanations appear in Change history.
+Redelivered articles never overwrite a decision, including manual resets/hides.
+Existing articles are not reclassified.
+
+For semantic AI classification, configure on the server and restart the web app
+and news worker:
+
+- `NEWS_AUTO_CATEGORIZE=ai`
+- `OPENAI_API_KEY` (secret; never commit it)
+- `NEWS_CATEGORY_MODEL=gpt-4.1-mini` (optional model override)
+
+AI mode sends the title, up to 6,000 summary characters and edition country to
+OpenAI using the [Responses structured output API](https://developers.openai.com/api/docs/guides/structured-outputs).
+Only allowed categories with model-reported confidence >= 0.85 are assigned;
+this confidence is not a measured accuracy guarantee. Missing credentials,
+timeouts, refusals and invalid responses leave stories for review. Requests use
+connect/read timeouts of 3/12 seconds without retries. Classification runs after
+arrivals have been committed, outside database transactions; large AI batches
+add processing time. Run collection through the existing news worker for feeds.
+An interrupted classification leaves the already saved story for manual review.
+Set `NEWS_AUTO_CATEGORIZE=off` to keep all new arrivals for manual categorization.

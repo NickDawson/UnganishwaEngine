@@ -15,6 +15,7 @@ import click
 from bs4 import BeautifulSoup
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
+from categorization import classify
 
 ROLES = {'admin': 'Administrator', 'editor': 'Editor (categorize and moderate)',
          'categorizer': 'Categorizer (assign categories)'}
@@ -174,33 +175,52 @@ class Newsroom:
     def ingest(self, source, articles, actor=None):
         """Never overwrite decisions when polling or a hub redelivers an article."""
         inserted = 0
+        pending = []
         with self.db() as db:
             if source.get('id') is not None:
                 current = self.sql(db, 'SELECT country, is_active, topic FROM trusted_sources WHERE id = ?',
                                    (source['id'],)).fetchone()
                 if not current or not current['is_active'] or current['country'] != source['country']:
                     return 0
-            default_topic = source.get('topic') or (current['topic'] if source.get('id') is not None else None)
-            if default_topic not in self.categories:
-                default_topic = None
             for article in articles:
                 link = article_url(article.get('link', ''))
                 title = plain_text(article.get('title'), 500)
                 if not link or not title or source['country'] not in self.countries:
                     continue
                 identity = hashlib.sha256((source['country'] + '\n' + link).encode()).hexdigest()
+                summary = plain_text(article.get('summary'), 10000)
                 cursor = self.sql(db, '''INSERT INTO newsroom_articles
                     (id, source_id, source, country, title, summary, link, published, created_at, updated_at, topic, status)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uncategorized') ON CONFLICT DO NOTHING''',
                     (identity, source.get('id'), source['source_name'], source['country'], title,
-                     plain_text(article.get('summary'), 10000), link,
+                     summary, link,
                      plain_text(article.get('published') or 'Recently', 200), now(), now(), None))
                 if cursor.rowcount == 1:
                     inserted += 1
+                    pending.append((identity, title, summary))
                     self.sql(db, """INSERT INTO newsroom_audit
                         (id, article_id, actor, action, old_status, new_status, old_topic, new_topic, note, created_at)
                         VALUES (?, ?, ?, 'received', NULL, 'uncategorized', NULL, NULL, '', ?)""",
                         (secrets.token_hex(16), identity, actor or 'Feed: ' + source['source_name'], now()))
+        # Save arrivals first and release database locks before any network request.
+        # Duplicates are never classified again, including manually reset stories.
+        for identity, title, summary in pending:
+            topic, note = classify(title, summary, source['country'], self.categories)
+            status = 'published' if topic else 'uncategorized'
+            timestamp = now()
+            with self.db() as db:
+                cursor = self.sql(db, '''UPDATE newsroom_articles
+                    SET topic = ?, status = ?, categorized_by = ?, published_at = ?,
+                        updated_at = ?, version = version + ?
+                    WHERE id = ? AND version = 1 AND status = 'uncategorized' AND topic IS NULL''',
+                    (topic, status, 'Automatic' if topic else None,
+                     timestamp if topic else None, timestamp, int(bool(topic)), identity))
+                if cursor.rowcount == 1:
+                    self.sql(db, '''INSERT INTO newsroom_audit
+                        (id, article_id, actor, action, old_status, new_status, old_topic, new_topic, note, created_at)
+                        VALUES (?, ?, 'Automatic', ?, 'uncategorized', ?, NULL, ?, ?, ?)''',
+                        (secrets.token_hex(16), identity, 'auto_categorize' if topic else 'needs_review',
+                         status, topic, note, timestamp))
         return inserted
 
     def public_articles(self, country, topic):

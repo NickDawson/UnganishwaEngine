@@ -16,7 +16,7 @@ class NewsroomTests(unittest.TestCase):
     def setUpClass(cls):
         cls.temp = tempfile.TemporaryDirectory()
         cls.env = patch.dict(os.environ, {'UNGANISHWA_DATA_DIR': cls.temp.name, 'DATABASE_URL': '',
-                                         'FLASK_SECRET_KEY': 'test-only', 'UNGANISHWA_ADMIN_KEY': 'test-owner-password'})
+                                         'FLASK_SECRET_KEY': 'test-only', 'NEWS_AUTO_CATEGORIZE': 'local', 'UNGANISHWA_ADMIN_KEY': 'test-owner-password'})
         cls.env.start()
         import app
         cls.module = app
@@ -287,6 +287,36 @@ class NewsroomTests(unittest.TestCase):
             self.assertGreaterEqual(row['page_views'], 1)
         finally:
             db.close()
+
+    def test_auto_category_audit_manual_override_and_replay(self):
+        with patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'local'}):
+            self.article.update(title='Kocha ajiandaa kwa ligi', summary='Timu yafunga mabao matatu')
+            story = self.seed()
+        self.assertEqual(story['topic'], 'Sports')
+        self.assertEqual(story['categorized_by'], 'Automatic')
+        self.assertEqual(story['status'], 'published')
+        with self.room.db() as db:
+            audit = self.room.sql(db, "SELECT * FROM newsroom_audit WHERE action = 'auto_categorize'").fetchone()
+        self.assertEqual(audit['new_topic'], 'Sports')
+        self.login()
+        self.assertIn('Automatically categorized', self.client.get('/admin/news').text)
+        response = self.client.post('/admin/news/' + story['id'], data={
+            'csrf_token': self.token(), 'version': story['version'], 'action': 'categorize', 'topic': 'Health'})
+        self.assertEqual(response.status_code, 302)
+        with patch('editorial.classify') as classifier:
+            self.assertEqual(self.room.ingest(self.source, [self.article]), 0)
+            classifier.assert_not_called()
+        self.assertEqual(self.room.public_articles('tanzania', 'Health')[0]['topic'], 'Health')
+
+    def test_editor_wins_during_classification(self):
+        def edit(*args):
+            with self.room.db() as db:
+                self.room.sql(db, "UPDATE newsroom_articles SET version = 2, status = 'rejected'")
+            return 'Sports', 'Automatic result'
+        with patch('editorial.classify', side_effect=edit):
+            story = self.seed()
+        self.assertEqual(story['status'], 'rejected')
+        self.assertIsNone(story['topic'])
 
 
 if __name__ == '__main__':
