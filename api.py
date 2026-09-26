@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import re
+import uuid
 
 from flask import jsonify, request
 from translation import (COUNTRY_LANGUAGES, LANGUAGES, resolve_language,
@@ -150,5 +151,24 @@ def register_api(app, countries, topics, load_articles, deduplicate_articles,
         ''', (token, platform, datetime.now(timezone.utc).isoformat()))
         db.commit()
         return jsonify({'status': 'registered'}), 201
+
+    @app.route('/api/v1/feedback', methods=['POST', 'OPTIONS'])
+    def api_feedback():
+        if request.method == 'OPTIONS':
+            return ('', 204)
+        payload = request.get_json(silent=True)
+        if not isinstance(payload, dict):
+            return jsonify({'error': 'A JSON object is required'}), 400
+        values = {}
+        for field, maximum in [('name', 100), ('comment', 2000), ('country', 100)]:
+            value = payload.get(field)
+            if not isinstance(value, str) or not value.strip() or len(value.strip()) > maximum:
+                return jsonify({'error': f'{field} is required and must be at most {maximum} characters'}), 400
+            values[field] = value.strip()
+        db = get_db()
+        execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at) VALUES (?, ?, ?, ?, ?)',
+                    (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat()))
+        db.commit()
+        return jsonify({'status': 'received'}), 201
 
     return app

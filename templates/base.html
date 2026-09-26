@@ -641,7 +641,7 @@
     {% if newsroom_user and (request.path.startswith('/admin') or request.path == '/analytics') %}
 <nav class="container" aria-label="Newsroom navigation" style="display:flex;gap:18px;flex-wrap:wrap;padding-top:20px;padding-bottom:20px;border-bottom:1px solid #d9e2de;font-size:13px;font-weight:700">
 <a href="{{ url_for('newsroom.inbox') }}">Daily inbox</a><a href="{{ url_for('newsroom.add_story') }}">Add news</a>
-{% if newsroom_user.role == 'admin' %}<a href="{{ url_for('newsroom.users') }}">People & permissions</a><a href="{{ url_for('admin_sources') }}">Sources</a><a href="{{ url_for('websub.dashboard') }}">WebSub</a><a href="{{ url_for('analytics') }}">Analytics</a>{% endif %}
+{% if newsroom_user.role == 'admin' %}<a href="{{ url_for('newsroom.users') }}">People & permissions</a><a href="{{ url_for('admin_sources') }}">Sources</a><a href="{{ url_for('websub.dashboard') }}">WebSub</a><a href="{{ url_for('analytics') }}">Analytics</a><a href="{{ url_for('admin_feedback') }}" {% if request.endpoint == 'admin_feedback' %}aria-current="page"{% endif %}>Feedback</a>{% endif %}
 <span style="margin-left:auto">{{ newsroom_user.username }}</span><a href="{{ url_for('admin_logout') }}">Log out</a>
 </nav>{% endif %}
 {% block content %}{% endblock %}

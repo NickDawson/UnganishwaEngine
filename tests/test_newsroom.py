@@ -140,6 +140,33 @@ class NewsroomTests(unittest.TestCase):
         for _ in range(2):
             self.assertIn('Updated 02 Jan 2020 · 03:04', self.client.get('/').text)
 
+    def test_admin_feedback_receives_searches_and_paginates_app_submissions(self):
+        self.assertEqual(self.client.get('/admin/feedback').status_code, 302)
+        with self.app.app_context():
+            db = self.module.get_db()
+            self.module.execute_sql(db, 'DELETE FROM reader_feedback')
+            db.commit()
+        self.login()
+        self.assertIn('No feedback yet', self.client.get('/admin/feedback').text)
+        for index in range(21):
+            response = self.client.post('/api/v1/feedback', json={
+                'name': f'Reader {index}', 'country': 'Tanzania',
+                'comment': '<script>alert(1)</script>' if index == 20 else 'Useful news'})
+            self.assertEqual(response.status_code, 201)
+        first = self.client.get('/admin/feedback')
+        self.assertEqual(first.status_code, 200)
+        self.assertIn('21 submissions', first.text)
+        self.assertIn('Page 1 of 2', first.text)
+        self.assertIn('&lt;script&gt;alert(1)&lt;/script&gt;', first.text)
+        self.assertNotIn('<script>alert(1)</script>', first.text)
+        self.assertIn('Reader 0', self.client.get('/admin/feedback?page=2').text)
+        for query in ['Reader 20', 'alert(1)', 'Tanzania']:
+            result = self.client.get('/admin/feedback', query_string={'q': query})
+            self.assertIn('Reader 20', result.text)
+        self.assertIn('No matching feedback', self.client.get('/admin/feedback?q=missing').text)
+        self.assertEqual(self.client.get('/admin/feedback?page=invalid').status_code, 200)
+        self.assertIn('Page 2 of 2', self.client.get('/admin/feedback?page=99999').text)
+
     def test_staff_scope_and_revocation(self):
         story = self.seed()
         self.login()
@@ -152,6 +179,7 @@ class NewsroomTests(unittest.TestCase):
         self.assertEqual(worker.get('/admin/users').status_code, 403)
         self.assertEqual(worker.get('/admin/sources').status_code, 403)
         self.assertEqual(worker.get('/analytics').status_code, 403)
+        self.assertEqual(worker.get('/admin/feedback').status_code, 403)
         for action, topic in [('reject', 'Business'), ('categorize', 'Sports')]:
             response = worker.post('/admin/news/' + story['id'], data={
                 'csrf_token': self.token(worker), 'version': 1, 'action': action, 'topic': topic})

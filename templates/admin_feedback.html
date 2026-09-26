@@ -1,0 +1,30 @@
+{% extends 'newsroom_base.html' %}
+{% block newsroom_content %}
+<header class="nr-head">
+  <div><div class="eyebrow">Reader feedback</div><h1>Listen to your readers.</h1><p class="nr-muted">Names, countries and comments sent from the Unganishwa app. Visible to administrators only.</p></div>
+  <span class="nr-pill">{{ total }} submission{{ '' if total == 1 else 's' }}</span>
+</header>
+<form class="nr-card nr-actions" method="get" action="{{ url_for('admin_feedback') }}" role="search">
+  <label style="flex:1;min-width:180px" for="feedback-search">Search feedback<input id="feedback-search" name="q" value="{{ q }}" maxlength="200" placeholder="Name, country or comment"></label>
+  <button type="submit">Search</button>
+  {% if q %}<a class="nr-button secondary" href="{{ url_for('admin_feedback') }}">Clear</a>{% endif %}
+</form>
+<section aria-label="Reader submissions">
+{% for item in feedback %}
+  <article class="nr-card feedback-card">
+    <header class="nr-head"><div><h2 dir="auto">{{ item.name }}</h2><span class="nr-pill" dir="auto">{{ item.country }}</span></div><time class="nr-muted" datetime="{{ item.created_at }}">{{ item.created_at[:10] }} · {{ item.created_at[11:16] }} UTC</time></header>
+    <p class="feedback-comment" dir="auto">{{ item.comment }}</p>
+  </article>
+{% else %}
+  <div class="nr-card"><h2>{{ 'No matching feedback' if q else 'No feedback yet' }}</h2><p class="nr-muted">{{ 'Try another name, country or phrase.' if q else 'When readers send feedback from the app, it will appear here.' }}</p></div>
+{% endfor %}
+</section>
+{% if pages > 1 %}
+<nav class="nr-actions" aria-label="Feedback pages">
+  {% if page > 1 %}<a class="nr-button secondary" href="{{ url_for('admin_feedback', page=page-1, q=q) }}">← Previous</a>{% endif %}
+  <span class="nr-muted">Page {{ page }} of {{ pages }}</span>
+  {% if page < pages %}<a class="nr-button secondary" href="{{ url_for('admin_feedback', page=page+1, q=q) }}">Next →</a>{% endif %}
+</nav>
+{% endif %}
+<style>.feedback-card h2{margin:0 0 10px;font-size:22px;overflow-wrap:anywhere}.feedback-comment{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin-bottom:0}.feedback-card .nr-head>div{min-width:0}.feedback-card .nr-pill{white-space:normal;overflow-wrap:anywhere}</style>
+{% endblock %}

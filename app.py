@@ -143,6 +143,9 @@ def init_analytics():
         execute_sql(db, """CREATE TABLE IF NOT EXISTS visitor_country_browsers (
             day TEXT NOT NULL, country_code TEXT NOT NULL, visitor_hash TEXT NOT NULL,
             PRIMARY KEY (day, country_code, visitor_hash))""")
+        execute_sql(db, '''CREATE TABLE IF NOT EXISTS reader_feedback (
+            id TEXT PRIMARY KEY, name TEXT NOT NULL, comment TEXT NOT NULL,
+            country TEXT NOT NULL, created_at TEXT NOT NULL)''')
         for region in COUNTRIES:
             execute_sql(db, 'INSERT INTO portal_stats (region) VALUES (?) ON CONFLICT (region) DO NOTHING', (region,))
         db.commit()
@@ -612,6 +615,29 @@ def information_page():
     page = INFO_PAGES[slug]
     return render_template('info_page.html', page=page, seo_title=f"{page['title']} | Unganishwa",
                            seo_description=page['intro'], canonical_url=f'{PUBLIC_SITE_URL}/{slug}')
+
+
+@app.route('/admin/feedback')
+def admin_feedback():
+    term = request.args.get('q', '').strip()[:200]
+    try:
+        page = max(1, int(request.args.get('page', 1)))
+    except ValueError:
+        page = 1
+    where = ''
+    params = []
+    if term:
+        where = ' WHERE LOWER(name) LIKE ? OR LOWER(country) LIKE ? OR LOWER(comment) LIKE ?'
+        params = ['%' + term.lower() + '%'] * 3
+    db = get_db()
+    total = execute_sql(db, 'SELECT COUNT(*) AS count FROM reader_feedback' + where, params).fetchone()['count']
+    pages = max(1, (total + 19) // 20)
+    page = min(page, pages)
+    feedback = execute_sql(db, 'SELECT name, country, comment, created_at FROM reader_feedback' + where +
+                           ' ORDER BY created_at DESC, id DESC LIMIT 20 OFFSET ?',
+                           [*params, (page - 1) * 20]).fetchall()
+    return render_template('admin_feedback.html', feedback=feedback, total=total,
+                           page=page, pages=pages, q=term)
 
 
 @app.route('/analytics')
