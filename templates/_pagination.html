@@ -1,0 +1,11 @@
+{% if pages > 1 %}
+<nav class="news-pagination" aria-label="News pages">
+  {% if pagination.previous %}<a href="{{ pagination.previous }}">← Previous</a>{% endif %}
+  {% for item in pagination['items'] %}
+    {% if not item.url %}<span>…</span>{% elif item.number == page %}<span class="current" aria-current="page">{{ item.label }}</span>{% else %}<a href="{{ item.url }}" aria-label="Page {{ item.label }}">{{ item.label }}</a>{% endif %}
+  {% endfor %}
+  {% if pagination.next %}<a href="{{ pagination.next }}">Next →</a>{% endif %}
+</nav>
+<p class="pagination-count">Page {{ page }} of {{ pages }} · {{ total }} stories</p>
+{% endif %}
+<style>.news-pagination{display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;margin:32px 0 12px}.news-pagination a,.news-pagination span{padding:10px 14px;border:1px solid var(--line);border-radius:6px;color:var(--ink);text-decoration:none}.news-pagination .current,.news-pagination a:hover{background:var(--teal);color:white}.pagination-count{text-align:center;color:var(--muted);font-size:13px}</style>

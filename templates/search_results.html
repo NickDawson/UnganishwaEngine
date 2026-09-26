@@ -1,8 +1,9 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<main class="container"><div class="eyebrow">Search / Unganishwa</div><h1>Results for<br>“{{ query }}”</h1><div class="feed-head"><h2>{{ articles|length }} stories found</h2></div>
+<main class="container"><div class="eyebrow">Search / Unganishwa</div><h1>Results for<br>“{{ query }}”</h1><div class="feed-head"><h2>{{ total }} stories found</h2></div>
     {% if articles %}<div class="grid">{% for article in articles %}<a class="article" href="{{ article.link }}" target="_blank" rel="noopener noreferrer"><div class="meta"><span>{{ article.topic }}</span><span>{{ article.published }}</span></div><h3>{{ article.title }}</h3><p class="summary">{{ article.summary }}</p><div class="source">From <strong>{{ article.source }}</strong><span class="arrow">↗</span></div></a>{% if loop.index is divisibleby 5 %}<div class="ad-slot" aria-label="Advertisement">{% if google_ads_client and google_ads_slot %}<ins class="adsbygoogle" data-ad-client="{{ google_ads_client }}" data-ad-slot="{{ google_ads_slot }}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle = window.adsbygoogle || []).push({});</script>{% else %}Advertisement{% endif %}</div>{% endif %}{% endfor %}</div>{% else %}<p class="empty">No matching stories yet. Try a broader phrase, such as “market” or “health”.</p>{% endif %}
+{% include '_pagination.html' %}
 </main>
 
 {% endblock %}

@@ -223,6 +223,33 @@ class Newsroom:
                          status, topic, note, timestamp))
         return inserted
 
+    def public_article_page(self, country, topic, page=1, query='', per_page=20):
+        """Fetch only the requested page, including matching archive metadata."""
+        where = " WHERE status IN ('uncategorized', 'published')"
+        params = []
+        if country:
+            where += ' AND country = ?'
+            params.append(country)
+        if topic != 'Top Stories':
+            where += " AND status = 'published' AND topic = ?"
+            params.append(topic)
+        if query:
+            escaped = query.lower().replace('!', '!!').replace('%', '!%').replace('_', '!_')
+            where += " AND (LOWER(title) LIKE ? ESCAPE '!' OR LOWER(summary) LIKE ? ESCAPE '!')"
+            params.extend(['%' + escaped + '%'] * 2)
+        with self.db() as db:
+            meta = self.sql(db, 'SELECT COUNT(*) AS total, MAX(updated_at) AS updated FROM newsroom_articles' + where, tuple(params)).fetchone()
+            pages = max(1, (meta['total'] + per_page - 1) // per_page)
+            page = min(max(1, page), pages)
+            rows = self.sql(db, 'SELECT * FROM newsroom_articles' + where +
+                            ' ORDER BY created_at DESC, id LIMIT ? OFFSET ?',
+                            tuple(params + [per_page, (page - 1) * per_page])).fetchall()
+        articles = [dict(row) for row in rows]
+        for article in articles:
+            if article['status'] == 'uncategorized' or article['topic'] not in self.categories:
+                article['topic'] = 'Uncategorized'
+        return articles, meta['total'], page, pages, meta['updated']
+
     def public_articles(self, country, topic):
         # Filter the complete archive; source defaults never override editorial state.
         query = """SELECT * FROM newsroom_articles

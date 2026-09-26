@@ -379,6 +379,62 @@ class NewsroomTests(unittest.TestCase):
         self.assertEqual(story['status'], 'rejected')
         self.assertIsNone(story['topic'])
 
+    def test_home_pagination_search_and_no_duplicate_stories(self):
+        with patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'off'}):
+            self.room.ingest(self.source, [
+                {'title': f'Archive headline {i}', 'summary': 'Reporting',
+                 'link': f'https://example.com/archive/{i}'} for i in range(45)])
+        def story_links(response):
+            soup = BeautifulSoup(response.text, 'html.parser')
+            return [a['href'] for a in soup.select('.lead-story, .brief-item, .editorial-row')]
+        with patch.object(self.room, 'public_articles', side_effect=AssertionError('Full archive loaded')):
+            first = self.client.get('/')
+            second = self.client.get('/?page=2')
+            last = self.client.get('/?page=999')
+            self.assertEqual(len(story_links(first)), 20)
+            self.assertEqual(len(set(story_links(first))), 20)
+            self.assertEqual(len(story_links(second)), 20)
+            self.assertEqual(len(story_links(last)), 5)
+            self.assertFalse(set(story_links(first)) & set(story_links(second)))
+            self.assertNotIn('aria-label="Lead stories"', second.text)
+            self.assertIn('Page 3 of 3', last.text)
+            self.assertEqual(len(story_links(self.client.get('/?page=bad'))), 20)
+            self.assertIn('1 stories', self.client.get('/?q=Archive+headline+44').text)
+            self.assertIn('No matching stories.', self.client.get('/?q=%25').text)
+            search = self.client.get('/search?q=Archive&page=2')
+            self.assertEqual(len(BeautifulSoup(search.text, 'html.parser').select('a.article')), 20)
+            self.assertIn('Page 2 of 3', search.text)
+        with self.room.db() as db:
+            self.room.sql(db, "UPDATE newsroom_articles SET status = 'published', topic = 'Business'")
+        edition = self.client.get('/news/tanzania/business?language=Original&q=Archive&page=2')
+        soup = BeautifulSoup(edition.text, 'html.parser')
+        following = soup.select_one('.news-pagination a:last-child')['href']
+        self.assertIn('page=3', following)
+        self.assertIn('q=Archive', following)
+        self.assertIn('language=Original', following)
+        self.assertEqual(self.client.get(following).status_code, 200)
+
+    def test_inline_feedback_json_and_no_javascript(self):
+        self.assertIn('id="home-feedback-form"', self.client.get('/').text)
+        invalid = self.client.post('/', data={'name': 'Asha', 'comment': 'Hello'},
+                                   headers={'Accept': 'application/json'})
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn('country', invalid.json['errors'])
+        valid = self.client.post('/?page=2', data={'name': 'Inline Reader', 'country': 'Kenya', 'comment': 'Inline message'},
+                                 headers={'Accept': 'application/json'})
+        self.assertTrue(valid.json['ok'])
+        response = self.client.post('/news/tanzania/business?language=Original',
+            data={'name': 'Fallback Reader', 'country': 'Kenya', 'comment': 'Fallback message'}, follow_redirects=True)
+        self.assertIn('Thank you for your feedback!', response.text)
+        self.assertIn('id="home-feedback-form"', response.text)
+        invalid = self.client.post('/', data={'name': 'Retained name'})
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn('value="Retained name"', invalid.text)
+        self.login()
+        inbox = self.client.get('/admin/feedback?q=Inline+Reader')
+        self.assertIn('Inline message', inbox.text)
+        self.assertIn('Source: Web', inbox.text)
+
 
 if __name__ == '__main__':
     unittest.main()

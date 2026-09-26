@@ -1,0 +1,50 @@
+<section id="reader-feedback" class="home-feedback" aria-labelledby="reader-feedback-title">
+  <div><div class="eyebrow">Your voice matters</div><h2 id="reader-feedback-title">Share your feedback</h2><p>A suggestion or something we can do better? Tell our team.</p></div>
+  <form method="post" action="{{ request.full_path.rstrip('?') }}#reader-feedback" id="home-feedback-form">
+    <p class="feedback-status" role="status" aria-live="polite">{% if received %}Thank you for your feedback! Your message has reached our team.{% elif errors %}Please check the highlighted fields below.{% endif %}</p>
+    <div class="feedback-fields">
+    {% for field, label, limit in [('name', 'Name / Jina', 100), ('country', 'Country / Nchi', 100), ('comment', 'Comment / Maoni', 2000)] %}
+      <div class="feedback-field feedback-{{ field }}"><label for="home-{{ field }}">{{ label }}</label>
+      {% if field == 'comment' %}<textarea id="home-{{ field }}" name="{{ field }}" rows="3" required maxlength="{{ limit }}" aria-describedby="home-error-{{ field }}" {% if errors.get(field) %}aria-invalid="true"{% endif %}>{{ values[field] }}</textarea>{% else %}<input id="home-{{ field }}" name="{{ field }}" value="{{ values[field] }}" autocomplete="{{ 'name' if field == 'name' else 'country-name' }}" required maxlength="{{ limit }}" aria-describedby="home-error-{{ field }}" {% if errors.get(field) %}aria-invalid="true"{% endif %}>{% endif %}
+      <small id="home-error-{{ field }}" class="feedback-error">{{ errors.get(field, '') }}</small></div>
+    {% endfor %}
+    </div>
+    <div class="feedback-bottom"><small>Your feedback is shared privately with our team.</small><button type="submit">Tuma maoni / Send feedback ↗</button></div>
+  </form>
+</section>
+<style>
+.home-feedback{margin:40px 0;padding:clamp(20px,4vw,36px);border:1px solid var(--line);border-top:4px solid var(--teal);border-radius:10px;background:white;scroll-margin-top:24px}.home-feedback h2{font-size:30px;margin:10px 0}.home-feedback p{color:var(--muted);line-height:1.6}.feedback-fields{display:grid;grid-template-columns:1fr 1fr 2fr;gap:18px;align-items:start}.feedback-field{display:grid;gap:8px;min-width:0}.feedback-field label{font-size:13px;font-weight:700}.feedback-field input,.feedback-field textarea{width:100%;box-sizing:border-box;border:1px solid #baccc5;border-radius:6px;padding:12px;font:inherit;background:white;color:var(--ink)}.feedback-field textarea{resize:vertical}.feedback-field [aria-invalid=true]{border-color:#a22f26}.feedback-error{color:#a22f26}.feedback-bottom{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-top:18px}.feedback-bottom small{color:var(--muted)}.feedback-bottom button{background:var(--teal);color:white;padding:13px 20px;border:0;border-radius:6px;font:inherit;font-weight:700;cursor:pointer}.feedback-bottom button:disabled{opacity:.65;cursor:wait}.home-feedback .feedback-status:not(:empty){padding:12px;background:#edf7f0;color:var(--ink);border-radius:6px}@media(max-width:700px){.feedback-fields{grid-template-columns:1fr}.feedback-bottom{align-items:stretch;flex-direction:column}}
+</style>
+<script>
+(() => {
+  const form = document.getElementById('home-feedback-form');
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const button = form.querySelector('button');
+    if (button.disabled) return;
+    button.disabled = true;
+    const status = form.querySelector('.feedback-status');
+    status.textContent = 'Sending your feedback…';
+    for (const field of ['name', 'country', 'comment']) {
+      form.elements[field].removeAttribute('aria-invalid');
+      document.getElementById('home-error-' + field).textContent = '';
+    }
+    try {
+      const response = await fetch(form.action, {method:'POST', body:new FormData(form), headers:{Accept:'application/json'}});
+      const result = await response.json();
+      if (response.ok && result.ok) {
+        form.reset();
+        status.textContent = 'Thank you for your feedback! Your message has reached our team.';
+      } else if (result.errors) {
+        status.textContent = 'Please check the highlighted fields below.';
+        for (const [field, message] of Object.entries(result.errors)) {
+          form.elements[field].setAttribute('aria-invalid','true');
+          document.getElementById('home-error-' + field).textContent = message;
+        }
+      } else throw new Error('Unable to submit');
+    } catch (_) {
+      status.textContent = 'Unable to confirm delivery. Your text is still here; please check your connection before trying again.';
+    } finally { button.disabled = false; }
+  });
+})();
+</script>

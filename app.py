@@ -12,7 +12,7 @@ from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
-from flask import Flask, Response, abort, g, redirect, render_template, request, session, url_for
+from flask import Flask, Response, abort, g, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 from api import register_api
 from editorial import Newsroom
@@ -520,7 +520,43 @@ def admin_delete_source(source_id):
     return redirect(url_for('admin_sources'))
 
 
-@app.route('/')
+def requested_page():
+    try:
+        return max(1, int(request.args.get('page', 1)))
+    except (ValueError, TypeError):
+        return 1
+
+
+def page_links(page, pages, **filters):
+    def link(number):
+        return url_for(request.endpoint, **(request.view_args or {}),
+                       **{key: value for key, value in filters.items()
+                          if key not in (request.view_args or {})}, page=number)
+    numbers = sorted({1, pages, *range(max(1, page - 2), min(pages, page + 2) + 1)})
+    items = []
+    for number in numbers:
+        if items and number - items[-1]['number'] > 1:
+            items.append({'number': number - 1, 'label': '…', 'url': None})
+        items.append({'number': number, 'label': str(number), 'url': link(number)})
+    return {'items': items, 'previous': link(page - 1) if page > 1 else None,
+            'next': link(page + 1) if page < pages else None}
+
+
+def submit_reader_feedback():
+    values, errors = {}, {}
+    for field, maximum in [('name', 100), ('country', 100), ('comment', 2000)]:
+        values[field] = request.form.get(field, '').strip()
+        if not values[field] or len(values[field]) > maximum:
+            errors[field] = f'Please enter {field} (up to {maximum} characters).'
+    if not errors:
+        db = get_db()
+        execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at, source) VALUES (?, ?, ?, ?, ?, ?)',
+                    (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat(), 'web'))
+        db.commit()
+    return values, errors
+
+
+@app.route('/', methods=['GET', 'POST'])
 def index():
     country = request.args.get('country', 'tanzania').lower()
     if country not in COUNTRIES:
@@ -532,7 +568,7 @@ def index():
     return render_edition(country, topic, language)
 
 
-@app.route('/news/<country>/<topic_slug>')
+@app.route('/news/<country>/<topic_slug>', methods=['GET', 'POST'])
 def edition(country, topic_slug):
     country = country.lower()
     topic = SLUG_TOPICS.get(topic_slug.lower())
@@ -543,12 +579,26 @@ def edition(country, topic_slug):
 
 def render_edition(country, topic, language='Original'):
     language = resolve_language(country, language) or 'Original'
-    articles = load_articles(country, topic)
-    timestamps = [datetime.fromisoformat(article['updated_at']).astimezone(timezone.utc)
-                  for article in articles if article.get('updated_at')]
-    updated = max(timestamps).strftime('%d %b %Y · %H:%M') if timestamps else None
+    query = request.args.get('q', '').strip()[:200]
+    articles, total, page, pages, latest = newsroom.public_article_page(
+        country, topic, requested_page(), query)
+    updated = datetime.fromisoformat(latest).astimezone(timezone.utc).strftime('%d %b %Y · %H:%M') if latest else None
+    values = {field: '' for field in ('name', 'country', 'comment')}
+    errors = {}
+    if request.method == 'POST':
+        values, errors = submit_reader_feedback()
+        if request.accept_mimetypes.best == 'application/json':
+            return jsonify(ok=not errors, errors=errors), 400 if errors else 200
+        if not errors:
+            session['home_feedback_received'] = True
+            return redirect(url_for(request.endpoint, **{**request.args.to_dict(),
+                            **(request.view_args or {})}) + '#reader-feedback', code=303)
+    received = session.pop('home_feedback_received', False) if request.method == 'GET' else False
+    pagination = page_links(page, pages, country=country, topic=topic, language=language, q=query)
     country_name = COUNTRIES[country]['name']
     canonical_path = '/' if country == 'tanzania' and topic == 'Top Stories' else f'/news/{country}/{TOPIC_SLUGS[topic]}'
+    if page > 1:
+        canonical_path += f'?page={page}'
     seo_title = ('Unganishwa | East Africa News and Daily Briefings' if canonical_path == '/'
                  else f'{country_name} {topic} News | Unganishwa')
     seo_description = (f'Latest {topic.lower()} news from {country_name}, curated from trusted East African publishers. '
@@ -557,9 +607,11 @@ def render_edition(country, topic, language='Original'):
                  'name': f'{country_name} {topic} news',
                  'itemListElement': [
                      {'@type': 'ListItem', 'position': position, 'name': article['title'], 'url': article['link']}
-                     for position, article in enumerate(articles, start=1)
+                     for position, article in enumerate(articles, start=(page - 1) * 20 + 1)
                      if article.get('link') and article['link'] != '#']}
     html = render_template('index.html', articles=articles, country=country,
+                           total=total, page=page, pages=pages, pagination=pagination, query=query,
+                           values=values, errors=errors, received=received,
                            country_info=COUNTRIES[country], countries=COUNTRIES,
                            topics=TOPICS, topic=topic, language=language,
                            languages=['Original', *COUNTRY_LANGUAGES[country]],
@@ -568,12 +620,12 @@ def render_edition(country, topic, language='Original'):
                            seo_title=seo_title, seo_description=seo_description,
                            canonical_url=f'{PUBLIC_SITE_URL}{canonical_path}', structured_data=item_list)
     try:
-        return translate_page(html, language)
+        return translate_page(html, language), 400 if errors else 200
     except TranslationUnavailable:
         notice = ('<p class="container" role="status">Translation is temporarily unavailable. '
                   'Showing original text. / Tafsiri haipatikani kwa sasa; habari ziko katika lugha ya asili.</p>')
         return html.replace('<main class="container editorial-page">',
-                            '<main class="container editorial-page">' + notice, 1)
+                            '<main class="container editorial-page">' + notice, 1), 400 if errors else 200
 
 
 
@@ -581,12 +633,9 @@ def render_edition(country, topic, language='Original'):
 @app.route('/search')
 def search():
     query = request.args.get('q', '').strip()
-    articles = []
-    for country in COUNTRIES:
-        articles.extend(load_articles(country, 'Top Stories'))
-    articles = [article for article in articles if query.lower() in
-                (article['title'] + article['summary']).lower()]
-    return render_template('search_results.html', articles=articles, query=query,
+    articles, total, page, pages, _ = newsroom.public_article_page(None, 'Top Stories', requested_page(), query[:200])
+    pagination = page_links(page, pages, q=query[:200])
+    return render_template('search_results.html', articles=articles, query=query, total=total, page=page, pages=pages, pagination=pagination,
                            countries=COUNTRIES, topics=TOPICS,
                            seo_title=f'Search results for {query} | Unganishwa' if query else 'Search | Unganishwa',
                            seo_description='Search trusted East African news sources on Unganishwa.',
@@ -628,15 +677,8 @@ def public_feedback():
     values = {field: '' for field in ('name', 'country', 'comment')}
     errors = {}
     if request.method == 'POST':
-        for field, maximum in [('name', 100), ('country', 100), ('comment', 2000)]:
-            values[field] = request.form.get(field, '').strip()
-            if not values[field] or len(values[field]) > maximum:
-                errors[field] = f'Please enter {field} (up to {maximum} characters).'
+        values, errors = submit_reader_feedback()
         if not errors:
-            db = get_db()
-            execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at, source) VALUES (?, ?, ?, ?, ?, ?)',
-                        (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat(), 'web'))
-            db.commit()
             session['feedback_received'] = True
             return redirect(url_for('public_feedback'), code=303)
     received = session.pop('feedback_received', False) if request.method == 'GET' else False
