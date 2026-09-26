@@ -1,6 +1,7 @@
 """Country language choices and server-side Google Cloud Translation."""
 from collections import OrderedDict
 from html import unescape
+from urllib.parse import urlencode
 import os
 from threading import Lock
 
@@ -36,6 +37,12 @@ def resolve_language(country, language):
     if not language or language == 'Original':
         return 'Original'
     return next((name for name in choices if language in (name, LANGUAGES[name])), None)
+
+
+def google_website_url(url, language):
+    """Translate a public Original-language page without exposing server credentials."""
+    return 'https://translate.google.com/translate?' + urlencode({
+        'sl': 'auto', 'tl': LANGUAGES[language], 'u': url})
 
 
 def translate_texts(texts, language):

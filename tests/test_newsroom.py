@@ -454,6 +454,30 @@ class NewsroomTests(unittest.TestCase):
         self.assertEqual(len(self.room.public_articles('tanzania', 'Uncategorized')), 1)
         self.assertIn('Assigned: 0', runner.invoke(args=['categorize-news', '--apply']).output)
 
+    def test_language_selector_google_fallback_preserves_edition(self):
+        from urllib.parse import urlsplit, parse_qs
+        with patch.dict(os.environ, {'GOOGLE_TRANSLATE_API_KEY': ''}):
+            response = self.client.get('/news/tanzania/business?q=loans')
+            soup = BeautifulSoup(response.text, 'html.parser')
+            option = soup.select_one('select[aria-label="Language"] option[value="English"]')
+            url = urlsplit(option['data-url'])
+            self.assertEqual(url.hostname, 'translate.google.com')
+            params = parse_qs(url.query)
+            self.assertEqual(params['tl'], ['en'])
+            source = urlsplit(params['u'][0])
+            self.assertEqual(source.path, '/news/tanzania/business')
+            self.assertEqual(parse_qs(source.query)['language'], ['Original'])
+            self.assertEqual(parse_qs(source.query)['q'], ['loans'])
+            fallback = self.client.get('/?language=English')
+            self.assertEqual(fallback.status_code, 200)
+            self.assertIn('Translate with Google', fallback.text)
+            self.assertIn('id="home-feedback-form"', fallback.text)
+        with patch.dict(os.environ, {'GOOGLE_TRANSLATE_API_KEY': 'test'}):
+            response = self.client.get('/')
+            soup = BeautifulSoup(response.text, 'html.parser')
+            option = soup.select_one('select[aria-label="Language"] option[value="English"]')
+            self.assertTrue(option['data-url'].startswith('/news/tanzania/'))
+
 
 if __name__ == '__main__':
     unittest.main()

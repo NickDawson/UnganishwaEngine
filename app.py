@@ -20,7 +20,7 @@ from websub import WebSub
 from ingestion import download, feed_articles
 from visitor_geo import visitor_country
 from translation import (COUNTRY_LANGUAGES, resolve_language, translate_page,
-                         TranslationUnavailable)
+                         TranslationUnavailable, google_website_url)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32)
@@ -595,6 +595,15 @@ def render_edition(country, topic, language='Original'):
                             **(request.view_args or {})}) + '#reader-feedback', code=303)
     received = session.pop('home_feedback_received', False) if request.method == 'GET' else False
     pagination = page_links(page, pages, country=country, topic=topic, language=language, q=query)
+    google_external = not bool(os.environ.get('GOOGLE_TRANSLATE_API_KEY', '').strip())
+    original_path = url_for('edition', country=country, topic_slug=TOPIC_SLUGS[topic],
+                            language='Original', page=page, q=query)
+    original_url = PUBLIC_SITE_URL + original_path
+    language_urls = {}
+    for choice in ['Original', *COUNTRY_LANGUAGES[country]]:
+        language_urls[choice] = (google_website_url(original_url, choice)
+            if google_external and choice != 'Original' else
+            url_for('edition', country=country, topic_slug=TOPIC_SLUGS[topic], language=choice, page=page, q=query))
     country_name = COUNTRIES[country]['name']
     canonical_path = '/' if country == 'tanzania' and topic == 'Top Stories' else f'/news/{country}/{TOPIC_SLUGS[topic]}'
     if page > 1:
@@ -611,6 +620,7 @@ def render_edition(country, topic, language='Original'):
                      if article.get('link') and article['link'] != '#']}
     html = render_template('index.html', articles=articles, country=country,
                            total=total, page=page, pages=pages, pagination=pagination, query=query,
+                           language_urls=language_urls, google_external=google_external,
                            values=values, errors=errors, received=received,
                            country_info=COUNTRIES[country], countries=COUNTRIES,
                            topics=TOPICS, topic=topic, language=language,
@@ -621,9 +631,10 @@ def render_edition(country, topic, language='Original'):
                            canonical_url=f'{PUBLIC_SITE_URL}{canonical_path}', structured_data=item_list)
     try:
         return translate_page(html, language), 400 if errors else 200
-    except TranslationUnavailable:
-        notice = ('<p class="container" role="status">Translation is temporarily unavailable. '
-                  'Showing original text. / Tafsiri haipatikani kwa sasa; habari ziko katika lugha ya asili.</p>')
+    except TranslationUnavailable as exc:
+        app.logger.warning('Edition translation unavailable: %s', exc)
+        notice = render_template('_translation_notice.html', language=language,
+                                 google_url=google_website_url(original_url, language))
         return html.replace('<main class="container editorial-page">',
                             '<main class="container editorial-page">' + notice, 1), 400 if errors else 200
 

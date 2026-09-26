@@ -5,8 +5,9 @@
     <div class="control-row">
       <span class="label">Edition</span>
       <select aria-label="Language" onchange="location.href=this.options[this.selectedIndex].dataset.url">
-        {% for item in languages %}<option value="{{ item }}" data-url="{{ url_for('edition', country=country, topic_slug=topic_slugs[topic], language=item) }}" {% if item == language %}selected{% endif %}>{{ item }}</option>{% endfor %}
+        {% for item in languages %}<option value="{{ item }}" data-url="{{ language_urls[item] }}" {% if item == language %}selected{% endif %}>{{ item }}</option>{% endfor %}
       </select>
+      {% if google_external %}<small class="translation-provider">Languages open in Google Translate ↗</small>{% endif %}
       <span class="filter-divider"></span>
       <span class="label">Region</span>
       <select aria-label="Country" onchange="location.href=this.options[this.selectedIndex].dataset.url">

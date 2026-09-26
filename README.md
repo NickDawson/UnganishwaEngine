@@ -305,3 +305,15 @@ preserved. Concurrent editorial edits take priority. Unresolved stories remain
 for manual review. Re-running does not overwrite previously assigned stories.
 With AI mode enabled, each attempted classification uses the configured API and
 may incur charges; use a small limit first. The local default needs no API key.
+
+### Google Translate website fallback
+
+Without `GOOGLE_TRANSLATE_API_KEY`, the public edition language selector opens
+Google Translate's website viewer for the selected language. It sends only the
+public edition URL, preserving category, page and search, with `language=Original`
+to avoid recursive translation. This is an external Google page, not in-site
+translation; Google may limit availability by region/browser. The selector labels
+this behavior. If configured Cloud Translation fails, the original page stays
+visible with an explicit **Translate with Google** link. Feedback stays on the
+original site. For translation directly inside Unganishwa, enable the Cloud
+Translation API, configure its API key in the web service environment and restart.
