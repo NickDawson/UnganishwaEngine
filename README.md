@@ -284,3 +284,24 @@ arrivals have been committed, outside database transactions; large AI batches
 add processing time. Run collection through the existing news worker for feeds.
 An interrupted classification leaves the already saved story for manual review.
 Set `NEWS_AUTO_CATEGORIZE=off` to keep all new arrivals for manual categorization.
+
+### Reclassify the Uncategorized archive
+
+Local rules now recognize specific English/Swahili headline subjects even when
+feeds supply no useful summary (for example mikopo, wakulima, magonjwa). Mixed
+subjects still require review. This remains a heuristic, not semantic AI.
+
+Run with the **same database and environment as the web/worker service**:
+
+```sh
+python -m flask --app app categorize-news --country tanzania --limit 10000
+python -m flask --app app categorize-news --country tanzania --limit 10000 --apply
+```
+
+The first command previews; `--apply` saves assignments and audit history. Omit
+`--country` to process every edition. Only untouched Uncategorized records are
+eligible: manual edits, resets, hidden stories and existing categories are
+preserved. Concurrent editorial edits take priority. Unresolved stories remain
+for manual review. Re-running does not overwrite previously assigned stories.
+With AI mode enabled, each attempted classification uses the configured API and
+may incur charges; use a small limit first. The local default needs no API key.

@@ -65,6 +65,48 @@ class Newsroom:
         app.context_processor(lambda: {'csrf_token': self.csrf_token,
                                       'newsroom_user': self.current_user()})
         app.cli.command('collect-news')(self.collect_command)
+        @app.cli.command('categorize-news')
+        @click.option('--apply', is_flag=True, help='Save assignments; default is a preview.')
+        @click.option('--limit', default=500, type=click.IntRange(1, 10000))
+        @click.option('--country', default=None)
+        def categorize_news(apply, limit, country):
+            """Revisit untouched Uncategorized stories with the current classifier."""
+            self.categorize_command(apply, limit, country)
+
+    def categorize_command(self, apply=False, limit=500, country=None):
+        """Revisit untouched Uncategorized stories with the current classifier."""
+        if country and country not in self.countries:
+            raise click.BadParameter('Unknown country', param_hint='--country')
+        where = "status = 'uncategorized' AND topic IS NULL AND version = 1 AND categorized_by IS NULL AND reviewed_by IS NULL"
+        params = []
+        if country:
+            where += ' AND country = ?'
+            params.append(country)
+        with self.db() as db:
+            rows = self.sql(db, 'SELECT id, title, summary, country FROM newsroom_articles WHERE ' + where +
+                            ' ORDER BY created_at DESC, id LIMIT ?', tuple(params + [limit])).fetchall()
+        assigned = remaining = 0
+        for row in rows:
+            topic, note = classify(row['title'], row['summary'], row['country'], self.categories)
+            if not topic:
+                remaining += 1
+                continue
+            if apply:
+                with self.db() as db:
+                    timestamp = now()
+                    cursor = self.sql(db, '''UPDATE newsroom_articles SET topic = ?, status = 'published',
+                        categorized_by = 'Automatic', published_at = ?, updated_at = ?, version = version + 1
+                        WHERE id = ? AND ''' + where,
+                        tuple([topic, timestamp, timestamp, row['id']] + params))
+                    if cursor.rowcount != 1:
+                        continue
+                    self.sql(db, '''INSERT INTO newsroom_audit
+                        (id, article_id, actor, action, old_status, new_status, old_topic, new_topic, note, created_at)
+                        VALUES (?, ?, 'Automatic', 'auto_categorize', 'uncategorized', 'published', NULL, ?, ?, ?)''',
+                        (secrets.token_hex(16), row['id'], topic, 'Archive recheck. ' + note, timestamp))
+            assigned += 1
+            click.echo(f'{topic}: {row["title"]}')
+        click.echo(f'{"Assigned" if apply else "Would assign"}: {assigned}; needs review: {remaining}; scanned: {len(rows)}')
 
     @contextmanager
     def db(self):

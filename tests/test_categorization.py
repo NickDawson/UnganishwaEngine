@@ -9,6 +9,12 @@ from categorization import classify, local_category, TERMS
 class ClassificationTests(unittest.TestCase):
     def test_bilingual_and_ambiguous(self):
         cases = [
+            ('Mikopo ya asilimia kumi yazidi kuinua wananchi Bukoba', 'Read the full report from the original source.', 'Business'),
+            ('Wakulima watakiwa kuzingatia ubora wa korosho', '', 'Business'),
+            ('Mazoezi muhimu katika kukabiliana na magonjwa yasiyo ya kuambukiza', '', 'Health'),
+            ('WAZIRI AZINDUA KLINIKI YA ARDHI YA KIDIJITI MTWARA', '', 'National'),
+            ('Serikali yaongeza mikopo ya biashara', '', 'Business'),
+            ('Mikopo kwa hospitali', '', None),
             ('Kocha ajiandaa kwa ligi', 'Timu yafunga mabao matatu', 'Sports'),
             ('Bank investment rises', 'Investors increase trade and exports', 'Business'),
             ('Chanjo mpya hospitali', 'Madaktari wahudumia wagonjwa', 'Health'),

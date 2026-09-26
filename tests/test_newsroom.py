@@ -435,6 +435,25 @@ class NewsroomTests(unittest.TestCase):
         self.assertIn('Inline message', inbox.text)
         self.assertIn('Source: Web', inbox.text)
 
+    def test_archive_reclassification_preview_apply_and_editor_protection(self):
+        with patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'off'}):
+            self.article['title'] = 'Mikopo ya asilimia kumi kuinua wananchi Bukoba'
+            story = self.seed()
+            self.room.ingest(self.source, [{**self.article, 'link': 'https://example.com/protected'}])
+        with self.room.db() as db:
+            self.room.sql(db, "UPDATE newsroom_articles SET version = 2 WHERE link = ?", ('https://example.com/protected',))
+        runner = self.app.test_cli_runner()
+        preview = runner.invoke(args=['categorize-news', '--country', 'tanzania'])
+        self.assertEqual(preview.exit_code, 0, preview.output)
+        self.assertIn('Would assign: 1', preview.output)
+        self.assertEqual(len(self.room.public_articles('tanzania', 'Uncategorized')), 2)
+        applied = runner.invoke(args=['categorize-news', '--country', 'tanzania', '--apply'])
+        self.assertEqual(applied.exit_code, 0, applied.output)
+        self.assertIn('Assigned: 1', applied.output)
+        self.assertEqual(len(self.room.public_articles('tanzania', 'Business')), 1)
+        self.assertEqual(len(self.room.public_articles('tanzania', 'Uncategorized')), 1)
+        self.assertIn('Assigned: 0', runner.invoke(args=['categorize-news', '--apply']).output)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -19,9 +19,42 @@ TERMS = {
     'World': 'united nations|security council|diplomatic|diplomacy|ceasefire|international relations|umoja wa mataifa|baraza la usalama|kidiplomasia|uhusiano wa kimataifa|kusitisha mapigano',
 }
 
+# High-specificity headline cues can classify short feeds without invented summaries.
+HEADLINE_TERMS = {
+    'Business': 'mikopo|mkopo|loans|loan|ujasiriamali|wajasiriamali|wafanyabiashara|wakulima|kilimo|korosho|uchumi|biashara|uwekezaji|mafuta na gesi|assets evaluation',
+    'Health': 'magonjwa|ugonjwa|chanjo|saratani|malaria|kipindupindu|matibabu|hospitali|nhif|vaccine|cancer|hospital|disease|diseases',
+    'Sports': 'soka|mabao|mshambuliaji|football|soccer|basketball|cricket|premier league|ligi kuu',
+    'Entertainment': 'muziki|wimbo|nyimbo|filamu|burudani|musician|singer|album',
+    'Technology': 'akili bandia|cybersecurity|artificial intelligence|software|smartphone',
+    'Science': 'wanasayansi|astronomy|spacecraft|fossil|sayansi',
+    'National': 'bunge|mbunge|wabunge|katiba|uchaguzi|mahakama|serikali|huduma za ardhi|kliniki ya ardhi|kuzama kwa boti|parliament|elections|judiciary|airport|disaster',
+    'World': 'umoja wa mataifa|united nations|ceasefire|kidiplomasia|diplomacy|uhusiano wa kimataifa',
+}
+EXTRA_TERMS = {
+    'Business': 'mikopo|mkopo|wajasiriamali|ujasiriamali|wafanyabiashara|wakulima|kilimo|korosho|madini|wachimbaji|viwanda|kiuchumi|mafuta na gesi|loans|loan|farmers|agriculture|mining|economics|ceos',
+    'Health': 'magonjwa|matibabu|nhif|bima ya afya|diseases|medical|healthcare',
+    'National': 'mbunge|serikali|waziri|halmashauri|ardhi|elimu|chuo|polisi|usalama|ajali|ujenzi|maendeleo|hitma|mazishi|government|minister|education|construction|infrastructure|airport|disaster',
+    'World': 'ujerumani|germany|kidiplomasia|diplomatic relations',
+}
+for category, extra in EXTRA_TERMS.items():
+    TERMS[category] += '|' + extra
+
+
+def matches(term, text):
+    return bool(re.search(r'\b' + re.escape(term) + r'\b', text, re.I))
+
 
 def local_category(title, summary, categories):
     """Require multiple distinct signals and a clear lead; scores are not probabilities."""
+    strong = {category for category, terms in HEADLINE_TERMS.items()
+              if category in categories and any(matches(term, title) for term in terms.split('|'))}
+    # General public-affairs words (e.g. a minister) must not outweigh a specific subject.
+    specific = strong - {'National'}
+    if len(specific) == 1 or strong == {'National'}:
+        chosen = next(iter(specific or strong))
+        return chosen, 'Automatic rules: specific headline subject (' + chosen + ').'
+    if len(specific) > 1:
+        return None, 'Needs review: headline contains multiple competing subjects.'
     scores = []
     for category in categories:
         terms = TERMS.get(category, '').split('|')
