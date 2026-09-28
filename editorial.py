@@ -83,11 +83,11 @@ class Newsroom:
             where += ' AND country = ?'
             params.append(country)
         with self.db() as db:
-            rows = self.sql(db, 'SELECT id, title, summary, country FROM newsroom_articles WHERE ' + where +
+            rows = self.sql(db, 'SELECT id, title, summary, country, link FROM newsroom_articles WHERE ' + where +
                             ' ORDER BY created_at DESC, id LIMIT ?', tuple(params + [limit])).fetchall()
         assigned = remaining = 0
         for row in rows:
-            topic, note = classify(row['title'], row['summary'], row['country'], self.categories)
+            topic, note = classify(row['title'], row['summary'], row['country'], self.categories, article_url=row['link'])
             if not topic:
                 remaining += 1
                 continue
@@ -239,15 +239,15 @@ class Newsroom:
                      plain_text(article.get('published') or 'Recently', 200), now(), now(), None))
                 if cursor.rowcount == 1:
                     inserted += 1
-                    pending.append((identity, title, summary))
+                    pending.append((identity, title, summary, link))
                     self.sql(db, """INSERT INTO newsroom_audit
                         (id, article_id, actor, action, old_status, new_status, old_topic, new_topic, note, created_at)
                         VALUES (?, ?, ?, 'received', NULL, 'uncategorized', NULL, NULL, '', ?)""",
                         (secrets.token_hex(16), identity, actor or 'Feed: ' + source['source_name'], now()))
         # Save arrivals first and release database locks before any network request.
         # Duplicates are never classified again, including manually reset stories.
-        for identity, title, summary in pending:
-            topic, note = classify(title, summary, source['country'], self.categories)
+        for identity, title, summary, link in pending:
+            topic, note = classify(title, summary, source['country'], self.categories, article_url=link)
             status = 'published' if topic else 'uncategorized'
             timestamp = now()
             with self.db() as db:

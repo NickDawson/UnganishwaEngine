@@ -4,6 +4,7 @@ import logging
 import math
 import os
 import re
+from urllib.parse import urlsplit
 
 import requests
 
@@ -23,7 +24,7 @@ TERMS = {
 HEADLINE_TERMS = {
     'Business': 'mikopo|mkopo|loans|loan|ujasiriamali|wajasiriamali|wafanyabiashara|wakulima|kilimo|korosho|uchumi|biashara|uwekezaji|mafuta na gesi|assets evaluation',
     'Health': 'magonjwa|ugonjwa|chanjo|saratani|malaria|kipindupindu|matibabu|hospitali|nhif|vaccine|cancer|hospital|disease|diseases',
-    'Sports': 'soka|mabao|mshambuliaji|football|soccer|basketball|cricket|premier league|ligi kuu',
+    'Sports': 'soka|mabao|magoli|mshambuliaji|football|soccer|basketball|cricket|premier league|ligi kuu|sports am|kurasa za mwisho|yanga|simba sc|simba queens|taifa stars|cecafa|volleyball',
     'Entertainment': 'muziki|wimbo|nyimbo|filamu|burudani|musician|singer|album',
     'Technology': 'akili bandia|cybersecurity|artificial intelligence|software|smartphone',
     'Science': 'wanasayansi|astronomy|spacecraft|fossil|sayansi',
@@ -70,11 +71,16 @@ def local_category(title, summary, categories):
     return None, 'Needs review: insufficient or conflicting category signals.'
 
 
-def classify(title, summary, country, categories):
+def classify(title, summary, country, categories, article_url=None):
     mode = os.environ.get('NEWS_AUTO_CATEGORIZE', 'local').lower()
     if mode == 'off':
         return None, 'Automatic categorization is disabled.'
     if mode != 'ai':
+        if article_url and 'Sports' in categories:
+            parts = urlsplit(article_url)
+            if (parts.hostname in ('www.mwanaspoti.co.tz', 'mwanaspoti.co.tz')
+                    and re.fullmatch(r'/ms/(soka|spoti-majuu|spoti-kenya|michezo-mengine)/[^/]+-\d+', parts.path)):
+                return 'Sports', 'Automatic rules: verified Mwanaspoti sports section.'
         return local_category(title, summary, categories)
     key = os.environ.get('OPENAI_API_KEY', '')
     if not key:

@@ -183,6 +183,20 @@
   },
   {
     "country": "tanzania",
+    "topic": "Top Stories",
+    "source_name": "Azam TV Videos",
+    "feed_url": "https://www.youtube.com/feeds/videos.xml?channel_id=UCpHiA0taMn231yDiUeqoANw",
+    "site_url": "https://www.youtube.com/user/azamtv1",
+    "source_type": "rss",
+    "is_active": 1,
+    "language": "Swahili",
+    "category": "Broadcast News",
+    "reliability_type": "Established broadcaster",
+    "rss_status": "Verified",
+    "notes": "Official YouTube channel linked by azamtv.com; Atom feed verified 2026-09-28. Sports reports are categorized by headline and summary."
+  },
+  {
+    "country": "tanzania",
     "topic": "National",
     "source_name": "Mwanahalisi Online",
     "feed_url": null,

@@ -61,6 +61,22 @@ class NewsroomTests(unittest.TestCase):
         with self.room.db() as db:
             return dict(self.room.sql(db, 'SELECT * FROM newsroom_articles').fetchone())
 
+    def test_mwanaspoti_wrapped_card_reaches_sports(self):
+        html = """<a href='/ms/soka/kinda-amteka-manqoba-5611046'
+            aria-label='Kinda amteka akili Manqoba'>
+            <article><h3><span>PRIME</span>Kinda amteka akili Manqoba</h3>
+            <p>Habari kutoka uwanjani.</p><aside>10 hours ago</aside></article></a>"""
+        with patch.object(self.module, 'fetch_html', return_value=html):
+            articles = self.module.extract_html_articles('https://www.mwanaspoti.co.tz/',
+                                                        'Mwanaspoti', 'tanzania', 'Uncategorized')
+        self.assertEqual(len(articles), 1)
+        self.assertEqual(articles[0]['title'], 'Kinda amteka akili Manqoba')
+        self.assertEqual(articles[0]['summary'], 'Habari kutoka uwanjani.')
+        self.room.ingest(self.source, articles)
+        page = self.client.get('/news/tanzania/sports')
+        self.assertIn('Kinda amteka akili Manqoba', page.text)
+        self.assertIn(articles[0]['link'], page.text)
+
     def test_html_summary_excludes_css_and_neighboring_stories(self):
         html = """<section><style>.elementor-15437 {display:flex}</style>
         <article><h2><a href='/one'>First important local news story</a></h2>
@@ -370,7 +386,7 @@ class NewsroomTests(unittest.TestCase):
         self.assertEqual(self.room.public_articles('tanzania', 'Health')[0]['topic'], 'Health')
 
     def test_editor_wins_during_classification(self):
-        def edit(*args):
+        def edit(*args, **kwargs):
             with self.room.db() as db:
                 self.room.sql(db, "UPDATE newsroom_articles SET version = 2, status = 'rejected'")
             return 'Sports', 'Automatic result'

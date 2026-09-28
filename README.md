@@ -203,6 +203,16 @@ falls back to the source website where configured, and renews WebSub leases hour
 On existing installations the new inbox starts empty until collection runs; demo
 stories and request-time source categories are no longer shown.
 
+Sports coverage includes Mwanaspoti story cards and **Azam TV Videos**, the official
+Azam TV YouTube Atom feed linked from azamtv.com. New installations and restarts
+add the video source without changing existing administrator edits or paused sources.
+With the default local classifier, Mwanaspoti sports-section URLs and distinctive
+sports headlines are assigned to Sports; other Azam programming is classified
+separately or left for review. Readers see headlines, excerpts, source names and
+links to the original report or video at `/news/tanzania/sports`.
+After deployment, restart the web and worker processes, then collect these two
+sources in **Sources → Collect news**, or wait for the next worker polling cycle.
+
 For a one-off collection use **Sources → Collect news**, or:
 
 ```sh

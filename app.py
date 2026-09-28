@@ -788,9 +788,10 @@ def extract_html_articles(site_url, source_name, country, feed_topic):
     for node in soup.select('script, style, noscript, template, nav, footer, form'):
         node.decompose()
 
-    for link in soup.select('article a, h2 a, h3 a, .story a, .headline a, .item a, .news-item a'):
+    for link in soup.select('article a, h2 a, h3 a, .story a, .headline a, .item a, .news-item a, a:has(> article)'):
         href = link.get('href') or ''
-        text = ' '.join(link.stripped_strings)
+        heading = link.select_one('h2, h3')
+        text = (link.get('aria-label') or ' '.join((heading or link).stripped_strings)).strip()
         if not href or len(text) < 20 or len(text) > 180:
             continue
         full_url = urljoin(site_url, href)
@@ -799,7 +800,7 @@ def extract_html_articles(site_url, source_name, country, feed_topic):
         seen.add(full_url)
         # Stay inside this story card; ancestor-wide text mixes unrelated stories
         # and can include page CSS before truncation.
-        card = link.find_parent('article') or link.find_parent(['li', 'div', 'section'])
+        card = link.select_one('article') or link.find_parent('article') or link.find_parent(['li', 'div', 'section'])
         summary = ''
         if card:
             excerpt = card.select_one('.elementor-post__excerpt, .entry-summary, .excerpt, .summary, .description')

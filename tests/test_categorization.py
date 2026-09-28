@@ -31,6 +31,22 @@ class ClassificationTests(unittest.TestCase):
             with self.subTest(title=title):
                 self.assertEqual(local_category(title, summary, list(TERMS))[0], expected)
 
+    @patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'local'})
+    def test_publisher_sports_paths_and_broadcast_headlines(self):
+        for title in ['SPORTS AM | David Molinga aifananisha Yanga na Barcelona',
+                      'Jinsi Azam TV ilivyowanasa Simba SC mafichoni',
+                      'KURASA ZA MWISHO | Maswali kwa kikosi cha Stars']:
+            self.assertEqual(classify(title, '', 'tanzania', list(TERMS))[0], 'Sports')
+        for url, expected in [
+            ('https://www.mwanaspoti.co.tz/ms/soka/kinda-amteka-manqoba-5611046', 'Sports'),
+            ('https://www.mwanaspoti.co.tz/ms/burudani/kinda-amteka-manqoba-5611046', None),
+            ('https://www.mwanaspoti.co.tz.example.com/ms/soka/kinda-amteka-manqoba-5611046', None),
+        ]:
+            self.assertEqual(classify('Kinda amteka akili Manqoba', '', 'tanzania',
+                                     list(TERMS), article_url=url)[0], expected)
+        with patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'off'}):
+            self.assertIsNone(classify('SPORTS AM', '', 'tanzania', list(TERMS))[0])
+
     @patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'ai', 'OPENAI_API_KEY': 'test-only'})
     @patch('categorization.requests.post')
     def test_ai_validation_and_failures(self, post):
