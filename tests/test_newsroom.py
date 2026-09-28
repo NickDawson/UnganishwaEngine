@@ -138,7 +138,7 @@ class NewsroomTests(unittest.TestCase):
             self.room.sql(db, 'UPDATE newsroom_articles SET updated_at = ? WHERE id = ?',
                           ('2020-01-02T03:04:00+00:00', story['id']))
         for _ in range(2):
-            self.assertIn('Updated 02 Jan 2020 · 03:04', self.client.get('/').text)
+            self.assertIn('Updated 02 Jan 2020 · 06:04', self.client.get('/').text)
 
     def test_admin_feedback_receives_searches_and_paginates_app_submissions(self):
         self.assertEqual(self.client.get('/admin/feedback').status_code, 302)

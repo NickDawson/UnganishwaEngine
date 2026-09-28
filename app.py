@@ -22,7 +22,20 @@ from visitor_geo import visitor_country
 from translation import (COUNTRY_LANGUAGES, resolve_language, translate_page,
                          TranslationUnavailable, google_website_url)
 
+EAST_AFRICA_TIME = timezone(timedelta(hours=3), 'EAT')
+
+
+def east_africa_time(value, date_format='%d %b %Y · %H:%M'):
+    if not value:
+        return ''
+    timestamp = datetime.fromisoformat(value) if isinstance(value, str) else value
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    return timestamp.astimezone(EAST_AFRICA_TIME).strftime(date_format)
+
+
 app = Flask(__name__)
+app.add_template_filter(east_africa_time, 'east_africa_time')
 app.secret_key = os.environ.get('FLASK_SECRET_KEY') or secrets.token_hex(32)
 app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(minutes=30)
 app.config['SESSION_COOKIE_HTTPONLY'] = True
@@ -582,7 +595,7 @@ def render_edition(country, topic, language='Original'):
     query = request.args.get('q', '').strip()[:200]
     articles, total, page, pages, latest = newsroom.public_article_page(
         country, topic, requested_page(), query)
-    updated = datetime.fromisoformat(latest).astimezone(timezone.utc).strftime('%d %b %Y · %H:%M') if latest else None
+    updated = east_africa_time(latest) if latest else None
     values = {field: '' for field in ('name', 'country', 'comment')}
     errors = {}
     if request.method == 'POST':

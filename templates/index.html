@@ -24,7 +24,7 @@
 <main class="container editorial-page">
   <header class="edition-head">
     <div><div class="eyebrow">{{ country_info.name }} edition · {{ language }}</div><h1>The daily briefing.</h1></div>
-    <div class="edition-meta"><strong>{% if updated %}Updated {{ updated }}{% else %}Awaiting news{% endif %}</strong><span>{% if updated %}UTC · {% endif %}{{ total }} stories · Page {{ page }} of {{ pages }}</span></div>
+    <div class="edition-meta"><strong>{% if updated %}Updated {{ updated }}{% else %}Awaiting news{% endif %}</strong><span>{% if updated %}EAT (UTC+3) · {% endif %}{{ total }} stories · Page {{ page }} of {{ pages }}</span></div>
   </header>
 
   <form class="edition-search" method="get" action="{{ url_for('edition', country=country, topic_slug=topic_slugs[topic]) }}">
