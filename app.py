@@ -75,11 +75,49 @@ SLUG_TOPICS = {slug: topic for topic, slug in TOPIC_SLUGS.items()}
 
 INFO_PAGES = {
     'about': {'title': 'About Unganishwa', 'intro': 'Unganishwa brings trusted East African reporting into one clear, reader-friendly briefing.', 'sections': [('Our purpose', 'We help readers follow the stories shaping Tanzania, Kenya, Uganda, Rwanda and Burundi without losing the local context.'), ('How it works', 'Our platform collects stories from reviewed publishers, organises them by region and topic, and always links readers to the original report.'), ('Our standard', 'Clarity, source transparency and regional relevance guide how stories appear on Unganishwa.')]},
-    'privacy': {'title': 'Privacy Policy', 'intro': 'This policy explains the limited information Unganishwa uses to operate and improve the service.', 'sections': [('Information we use', 'We may store anonymous visit statistics, your preferences, and an email address only when you choose to subscribe.'), ('Cookies and analytics', 'A first-party cookie may distinguish returning visitors. We use aggregate analytics to understand which editions and topics are useful.'), ('External services', 'Articles and advertisements may link to third-party websites. Their own privacy policies apply after you leave Unganishwa.'), ('Your choices', 'You may request removal of subscription information by emailing hello@unganishwa.com.')]},
+    'privacy': {
+        'title': 'Privacy Policy',
+        'updated': '29 September 2026',
+        'intro': 'This policy explains how Unganishwa handles information when you browse unganishwa.com, subscribe, send feedback, or use the connected subscription and feedback services. It also explains advertising cookies and your privacy choices.',
+        'sections': [
+            ('About this service',
+             'The company Unganishwa operates this news discovery service and is responsible for the personal information it collects as described in this policy. The service links readers to reporting from independent publishers. For questions about this policy or requests concerning your information, contact info@unganishwa.com.'),
+            ('Information you provide',
+             'When you subscribe, we store your email address, subscription time and whether you subscribed through the website or mobile service. When you submit feedback, we store the name, country and comment you enter, the submission time and its source. Feedback is available to authorised staff for review. Please do not include sensitive personal information in your comments. If you register for notifications through a connected service, we store the notification token, device platform and registration time.'),
+            ('Visit statistics and technical information',
+             'We record page-view counts, the country edition visited, first and most recent visit times, and a hashed browser identifier to estimate returning visitors. Where configured, we estimate your country from your IP address using a local lookup database or a trusted proxy country header. Our application analytics store the country result rather than the raw IP address. These browser identifiers are pseudonymous, not fully anonymous. The web server and hosting infrastructure may separately process IP addresses, requested URLs and browser information in access or security logs.'),
+            ('Cookies used by Unganishwa',
+             'The unganishwa_visitor cookie contains a random browser identifier and lasts for up to one year unless you delete it sooner. It supports visit and returning-visitor statistics. We also use a session cookie for functions such as staff sign-in, security and form confirmation messages. Deleting cookies does not automatically delete records already stored on our server. You can block or clear cookies in your browser, although some functions may stop working.'),
+            ('How we use information',
+             'We use submitted information to manage subscriptions and notification registrations, review feedback and respond to requests. We use technical information to operate and secure the service and understand readership. Where applicable privacy law requires a legal basis, this may be consent for optional advertising or communications, providing a service you request, legitimate interests in operating and protecting the service, or meeting a legal obligation. The applicable basis depends on the activity and your location.'),
+            ('Google AdSense and advertising partners',
+             'Unganishwa is configured to use Google AdSense. When Google advertising code loads, Google and other advertising vendors may collect information through cookies, web beacons, IP addresses and browser or device identifiers. Google and its partners may use advertising cookies to show ads based on previous visits to this website and other websites, measure ad performance and prevent fraud. The ads and vendors available depend on our AdSense settings, your location and your consent choices. See the Google data-use and advertising controls linked below.'),
+            ('Advertising consent and your choices',
+             'Google requires a certified consent platform for personalised ads served to visitors in the European Economic Area, the United Kingdom and Switzerland. Where a consent message is displayed, use its controls to accept, decline or manage the purposes and advertising partners presented. You can revisit your choices through the privacy or consent control provided by that platform when available. You can also manage Google personalised advertising in My Ad Center and use the industry opt-out link below for participating vendors. Declining personalisation does not necessarily remove all advertisements. This policy does not itself collect consent or enable a consent platform.'),
+            ('Hosting, fonts, translation and external links',
+             'Our website is hosted on Contabo infrastructure. Pages request fonts from Google Fonts, which exposes connection information such as your IP address to Google. Choosing a Google Translate version may send the requested page URL and browser connection information to Google; where server-side translation is enabled, page text is sent for translation. Opening a news article, advertisement or other external link takes you to a separate service whose own privacy policy applies. Providers may process information in countries outside your country of residence.'),
+            ('Access and disclosure',
+             'Authorised staff can access information needed to operate the service and review feedback. Hosting and technical providers process information needed to deliver their services, and advertising providers receive information when their code runs. Information may also be disclosed when required by law or necessary to investigate abuse and protect the service. The provider links below explain Google’s own data practices.'),
+            ('How long information is kept',
+             'The one-year visitor cookie lifetime is not a deletion schedule for server records. The current application has no automatic expiry for subscription records, feedback, notification registrations or browser-level analytics. These records remain until removed through administration or in response to an applicable request. Hosting logs and provider-held information may follow separate retention schedules. Contact us about deletion of information associated with you.'),
+            ('Your privacy requests',
+             'Depending on the law that applies to you, you may have rights to access, correct or delete your information, restrict or object to processing, receive a portable copy, or withdraw consent. Email info@unganishwa.com with your request and enough information to locate the relevant record. We may need to verify that the information belongs to you. For subscription removal, identify the subscribed email address. You can disable notifications through your device or browser settings. You may also complain to the data protection authority responsible for your location. Browser-cookie changes alone do not remove subscription or feedback records.'),
+            ('Security and policy changes',
+             'We use access controls for staff functions, but no online service can guarantee complete security. Avoid sending passwords or other sensitive details through feedback forms. We will update this page when our practices change and revise the date above; where required, material changes will receive additional notice.'),
+        ],
+        'links': [
+            ('Contact Unganishwa about privacy', 'mailto:info@unganishwa.com'),
+            ('How Google uses information from sites and apps using its services', 'https://policies.google.com/technologies/partner-sites'),
+            ('Google Privacy Policy', 'https://policies.google.com/privacy'),
+            ('Google My Ad Center: personalised advertising choices', 'https://myadcenter.google.com/'),
+            ('Advertising industry opt-out choices', 'https://optout.aboutads.info/'),
+            ('Contabo Privacy Policy', 'https://contabo.com/en/legal/privacy/'),
+        ],
+    },
     'terms': {'title': 'Terms of Use', 'intro': 'By using Unganishwa, you agree to use the service lawfully and responsibly.', 'sections': [('News links', 'Unganishwa is a discovery platform. Linked publishers own and are responsible for their original reporting.'), ('Availability', 'We work to keep the service accurate and available, but feeds, links and features may change without notice.'), ('Acceptable use', 'Do not misuse the service, attempt unauthorised access, or interfere with other readers.')]},
     'editorial-policy': {'title': 'Editorial Policy', 'intro': 'Our editorial choices make regional news easier to discover while preserving source transparency.', 'sections': [('Source review', 'Sources are selected for relevance, publication consistency and a clear record of original reporting.'), ('Attribution', 'Every story names its publisher and links to the original page. Unganishwa summaries do not replace the full report.'), ('Independence', 'Advertising and sponsorship do not determine which stories are selected or how they are ranked.')]},
-    'corrections': {'title': 'Corrections Policy', 'intro': 'Accuracy matters. We review credible correction requests promptly and transparently.', 'sections': [('Report an issue', 'Send the story title, link and a short explanation to hello@unganishwa.com.'), ('What we correct', 'We correct errors introduced by our summaries, labels or source information. Corrections to an original article should also be sent to its publisher.')]},
-    'contact': {'title': 'Contact Unganishwa', 'intro': 'Questions, source suggestions, partnerships and correction requests are welcome.', 'sections': [('Email us', 'Write to hello@unganishwa.com and include enough detail for our team to respond efficiently.'), ('Source submissions', 'Publishers may send their website, RSS feed, country and coverage topics for editorial review.')]},
+    'corrections': {'title': 'Corrections Policy', 'intro': 'Accuracy matters. We review credible correction requests promptly and transparently.', 'sections': [('Report an issue', 'Send the story title, link and a short explanation to info@unganishwa.com.'), ('What we correct', 'We correct errors introduced by our summaries, labels or source information. Corrections to an original article should also be sent to its publisher.')]},
+    'contact': {'title': 'Contact Unganishwa', 'intro': 'Questions, source suggestions, partnerships and correction requests are welcome.', 'sections': [('Email us', 'Write to info@unganishwa.com and include enough detail for our team to respond efficiently.'), ('Source submissions', 'Publishers may send their website, RSS feed, country and coverage topics for editorial review.')]},
 }
 
 
@@ -337,7 +375,7 @@ def inject_analytics_link():
         'site_schema': {
             '@context': 'https://schema.org',
             '@graph': [
-                {'@type': 'Organization', '@id': f'{PUBLIC_SITE_URL}/#organization', 'name': 'Unganishwa', 'url': f'{PUBLIC_SITE_URL}/', 'email': 'hello@unganishwa.com'},
+                {'@type': 'Organization', '@id': f'{PUBLIC_SITE_URL}/#organization', 'name': 'Unganishwa', 'url': f'{PUBLIC_SITE_URL}/', 'email': 'info@unganishwa.com'},
                 {'@type': 'WebSite', '@id': f'{PUBLIC_SITE_URL}/#website', 'name': 'Unganishwa', 'url': f'{PUBLIC_SITE_URL}/', 'publisher': {'@id': f'{PUBLIC_SITE_URL}/#organization'}},
             ],
         },
@@ -664,6 +702,12 @@ def search():
                            seo_title=f'Search results for {query} | Unganishwa' if query else 'Search | Unganishwa',
                            seo_description='Search trusted East African news sources on Unganishwa.',
                            canonical_url=f'{PUBLIC_SITE_URL}/search', robots_meta='noindex,follow')
+
+
+@app.route('/ads.txt')
+def ads_txt():
+    publisher_id = GOOGLE_ADS_CLIENT.removeprefix('ca-')
+    return Response(f'google.com, {publisher_id}, DIRECT, f08c47fec0942fa0\n', mimetype='text/plain')
 
 
 @app.route('/robots.txt')

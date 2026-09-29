@@ -4,10 +4,16 @@
   <article class="info-page">
     <div class="eyebrow">Unganishwa standards</div>
     <h1>{{ page.title }}</h1>
+    {% if page.updated %}<p class="policy-date">Last updated: {{ page.updated }}</p>{% endif %}
     <p class="info-intro">{{ page.intro }}</p>
     {% for heading, copy in page.sections %}
     <section><h2>{{ heading }}</h2><p>{{ copy }}</p></section>
     {% endfor %}
+    {% if page.links %}
+    <section><h2>Privacy resources and controls</h2>
+      <ul>{% for label, href in page.links %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
   </article>
 </main>
 <style>
@@ -15,5 +21,6 @@
   .info-page h1{font:700 clamp(42px,7vw,72px)/.98 "Space Grotesk";letter-spacing:-3px;margin:12px 0 22px}
   .info-intro{font-size:20px;line-height:1.65;color:#425153;border-bottom:1px solid var(--line);padding-bottom:32px;margin-bottom:34px}
   .info-page section{padding:12px 0}.info-page h2{font:700 22px "Space Grotesk";margin-bottom:8px}.info-page section p{color:var(--muted);font-size:16px;line-height:1.75}
+  .policy-date{color:var(--muted);font-size:14px}.info-page li{margin:12px 0;line-height:1.6}.info-page section a{color:var(--teal);text-decoration:underline;text-underline-offset:3px;overflow-wrap:anywhere}
 </style>
 {% endblock %}
