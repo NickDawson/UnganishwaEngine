@@ -2,6 +2,15 @@
 <html lang="{{ page_language|default('en') }}">
   <head>
     <meta charset="UTF-8" />
+    {% if google_analytics_measurement_id %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ google_analytics_measurement_id|urlencode }}"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', {{ google_analytics_measurement_id|tojson }});
+    </script>
+    {% endif %}
     <meta name="google-adsense-account" content="ca-pub-5357998343465142" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{{ seo_title|default('Unganishwa | East Africa News and Daily Briefings') }}</title>

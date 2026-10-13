@@ -50,6 +50,7 @@ ADMIN_PASSWORD = os.environ.get('UNGANISHWA_ADMIN_KEY', 'admin123')
 ADMIN_PASSWORD_HASH = generate_password_hash(ADMIN_PASSWORD, method='pbkdf2:sha256')
 GOOGLE_ADS_CLIENT = os.environ.get('GOOGLE_ADS_CLIENT', '').strip() or 'ca-pub-5357998343465142'
 GOOGLE_ADS_SLOT = os.environ.get('GOOGLE_ADS_SLOT', '')
+GOOGLE_ANALYTICS_MEASUREMENT_ID = os.environ.get('GOOGLE_ANALYTICS_MEASUREMENT_ID', 'G-NGWBW4D42X').strip()
 API_CORS_ORIGIN = os.environ.get('API_CORS_ORIGIN', '*')
 SPONSOR_NAME = os.environ.get('SPONSOR_NAME', '')
 SPONSOR_URL = os.environ.get('SPONSOR_URL', '')
@@ -366,6 +367,7 @@ def inject_analytics_link():
         'analytics_url': '/analytics',
         'google_ads_client': GOOGLE_ADS_CLIENT,
         'google_ads_slot': GOOGLE_ADS_SLOT,
+        'google_analytics_measurement_id': GOOGLE_ANALYTICS_MEASUREMENT_ID,
         'sponsor_name': SPONSOR_NAME,
         'sponsor_url': SPONSOR_URL,
         'affiliate_label': AFFILIATE_LABEL,
