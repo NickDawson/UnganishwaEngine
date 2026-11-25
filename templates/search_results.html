@@ -1,9 +1,33 @@
-{% extends 'base.html' %}
-
+{% extends 'public_base.html' %}
 {% block content %}
-<main class="container"><div class="eyebrow">Search / Unganishwa</div><h1>Results for<br>“{{ query }}”</h1><div class="feed-head"><h2>{{ total }} stories found</h2></div>
-    {% if articles %}<div class="grid">{% for article in articles %}<a class="article" href="{{ article.link }}" target="_blank" rel="noopener noreferrer"><div class="meta"><span>{{ article.topic }}</span><span>{{ article.published }}</span></div><h3>{{ article.title }}</h3><p class="summary">{{ article.summary }}</p><div class="source">From <strong>{{ article.source }}</strong><span class="arrow">↗</span></div></a>{% if loop.index is divisibleby 5 %}<div class="ad-slot" aria-label="Advertisement">{% if google_ads_client and google_ads_slot %}<ins class="adsbygoogle" data-ad-client="{{ google_ads_client }}" data-ad-slot="{{ google_ads_slot }}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle = window.adsbygoogle || []).push({});</script>{% else %}Advertisement{% endif %}</div>{% endif %}{% endfor %}</div>{% else %}<p class="empty">No matching stories yet. Try a broader phrase, such as “market” or “health”.</p>{% endif %}
-{% include '_pagination.html' %}
+<main class="container public-page">
+  <header class="public-page-heading">
+    <h1>Search the region</h1>
+    <form class="edition-find public-search-form" method="get" action="{{ url_for('search') }}" role="search">
+      <label class="edition-visually-hidden" for="regional-query">Search stories</label>
+      <input id="regional-query" type="search" name="q" value="{{ query }}" maxlength="200" placeholder="Search stories">
+      <button class="edition-button" type="submit">Search</button>
+    </form>
+  </header>
+  <section class="public-search-results" aria-labelledby="results-title">
+    <h2 id="results-title">{{ total }} {{ 'story' if total == 1 else 'stories' }}{% if query %} for “{{ query }}”{% endif %}</h2>
+    {% for article in articles %}
+    <a class="article public-search-story" href="{{ article.link }}" target="_blank" rel="noopener noreferrer">
+      <div class="public-search-copy">
+        <small>{{ article.topic }} · {{ article.source }}</small>
+        <h3>{{ article.title }}</h3>
+        <p>{{ article.summary }}</p>
+        <small>{{ article.published }}</small>
+      </div>
+      <span aria-hidden="true">↗</span>
+    </a>
+    {% if loop.index is divisibleby 5 and google_ads_client and google_ads_slot %}
+    <div class="ad-slot" aria-label="Advertisement"><ins class="adsbygoogle" data-ad-client="{{ google_ads_client }}" data-ad-slot="{{ google_ads_slot }}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(window.adsbygoogle = window.adsbygoogle || []).push({});</script></div>
+    {% endif %}
+    {% else %}
+    <p>No matching stories. Try a broader search.</p>
+    {% endfor %}
+    {% include '_pagination.html' %}
+  </section>
 </main>
-
 {% endblock %}

@@ -1,4 +1,4 @@
-{% extends 'base.html' %}
+{% extends 'admin_base.html' %}
 {% block content %}
 <main class="container newsroom">
   {% for message in get_flashed_messages() %}<p class="nr-notice" role="status">{{ message }}</p>{% endfor %}

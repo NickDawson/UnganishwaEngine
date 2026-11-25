@@ -402,21 +402,22 @@ class NewsroomTests(unittest.TestCase):
                  'link': f'https://example.com/archive/{i}'} for i in range(45)])
         def story_links(response):
             soup = BeautifulSoup(response.text, 'html.parser')
-            return [a['href'] for a in soup.select('.lead-story, .brief-item, .editorial-row')]
+            return [a['href'] for a in soup.select('.edition-card h3 a, .edition-story-row h3 a')]
         with patch.object(self.room, 'public_articles', side_effect=AssertionError('Full archive loaded')):
             first = self.client.get('/')
             second = self.client.get('/?page=2')
             last = self.client.get('/?page=999')
-            self.assertEqual(len(story_links(first)), 20)
-            self.assertEqual(len(set(story_links(first))), 20)
-            self.assertEqual(len(story_links(second)), 20)
-            self.assertEqual(len(story_links(last)), 5)
+            self.assertEqual(len(story_links(first)), 9)
+            self.assertEqual(len(BeautifulSoup(first.text, 'html.parser').select('.edition-story-row')), 6)
+            self.assertEqual(len(set(story_links(first))), 9)
+            self.assertEqual(len(story_links(second)), 9)
+            self.assertEqual(len(story_links(last)), 9)
             self.assertFalse(set(story_links(first)) & set(story_links(second)))
-            self.assertNotIn('aria-label="Lead stories"', second.text)
-            self.assertIn('Page 3 of 3', last.text)
-            self.assertEqual(len(story_links(self.client.get('/?page=bad'))), 20)
-            self.assertIn('1 stories', self.client.get('/?q=Archive+headline+44').text)
-            self.assertIn('No matching stories.', self.client.get('/?q=%25').text)
+            self.assertIsNone(BeautifulSoup(second.text, 'html.parser').select_one('.edition-cards'))
+            self.assertIn('Page 5 of 5', last.text)
+            self.assertEqual(len(story_links(self.client.get('/?page=bad'))), 9)
+            self.assertIn('1 story', self.client.get('/?q=Archive+headline+44').text)
+            self.assertIn('No stories match your search.', self.client.get('/?q=%25').text)
             search = self.client.get('/search?q=Archive&page=2')
             self.assertEqual(len(BeautifulSoup(search.text, 'html.parser').select('a.article')), 20)
             self.assertIn('Page 2 of 3', search.text)
@@ -431,7 +432,12 @@ class NewsroomTests(unittest.TestCase):
         self.assertEqual(self.client.get(following).status_code, 200)
 
     def test_inline_feedback_json_and_no_javascript(self):
-        self.assertIn('id="home-feedback-form"', self.client.get('/').text)
+        page = BeautifulSoup(self.client.get('/?language=Original').text, 'html.parser')
+        form = page.select_one('#home-feedback-form')
+        self.assertIsNotNone(form)
+        self.assertEqual([label.get_text(strip=True) for label in form.select('label')],
+                         ['Name', 'Country', 'Comment'])
+        self.assertEqual(form.select_one('button').get_text(' ', strip=True), 'Send feedback ↗')
         invalid = self.client.post('/', data={'name': 'Asha', 'comment': 'Hello'},
                                    headers={'Accept': 'application/json'})
         self.assertEqual(invalid.status_code, 400)
@@ -475,7 +481,7 @@ class NewsroomTests(unittest.TestCase):
         with patch.dict(os.environ, {'GOOGLE_TRANSLATE_API_KEY': ''}):
             response = self.client.get('/news/tanzania/business?q=loans')
             soup = BeautifulSoup(response.text, 'html.parser')
-            option = soup.select_one('select[aria-label="Language"] option[value="English"]')
+            option = soup.select_one('#edition-language option[value="English"]')
             url = urlsplit(option['data-url'])
             self.assertEqual(url.hostname, 'translate.google.com')
             params = parse_qs(url.query)
@@ -491,7 +497,7 @@ class NewsroomTests(unittest.TestCase):
         with patch.dict(os.environ, {'GOOGLE_TRANSLATE_API_KEY': 'test'}):
             response = self.client.get('/')
             soup = BeautifulSoup(response.text, 'html.parser')
-            option = soup.select_one('select[aria-label="Language"] option[value="English"]')
+            option = soup.select_one('#edition-language option[value="English"]')
             self.assertTrue(option['data-url'].startswith('/news/tanzania/'))
 
 

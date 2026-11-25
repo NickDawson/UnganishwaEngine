@@ -365,6 +365,7 @@ def inject_analytics_link():
     private_page = request.path.startswith('/admin') or request.path.startswith('/analytics')
     return {
         'analytics_url': '/analytics',
+        'public_countries': COUNTRIES,
         'google_ads_client': GOOGLE_ADS_CLIENT,
         'google_ads_slot': GOOGLE_ADS_SLOT,
         'google_analytics_measurement_id': GOOGLE_ANALYTICS_MEASUREMENT_ID,
@@ -388,7 +389,7 @@ def inject_analytics_link():
 def subscribe():
     email = request.form.get('email', '').strip().lower()
     if not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
-        return redirect(url_for('index', subscribed='invalid'))
+        return redirect(url_for('index', subscribed='invalid', _anchor='newsletter'))
     now = datetime.now(timezone.utc).isoformat()
     with db_connect(DATABASE) as db:
         execute_sql(db, '''
@@ -397,7 +398,7 @@ def subscribe():
             ON CONFLICT (email) DO UPDATE SET subscribed_at = excluded.subscribed_at
         ''', (email, now))
         db.commit()
-    return redirect(url_for('index', subscribed='success'))
+    return redirect(url_for('index', subscribed='success', _anchor='newsletter'))
 
 
 @app.route('/admin/login', methods=['GET', 'POST'])
@@ -611,14 +612,11 @@ def submit_reader_feedback():
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    country = request.args.get('country', 'tanzania').lower()
-    if country not in COUNTRIES:
-        country = 'tanzania'
+    country = g.public_country
     topic = request.args.get('topic', 'Top Stories')
     if topic not in TOPICS:
         topic = 'Top Stories'
-    language = request.args.get('language', 'Original')
-    return render_edition(country, topic, language)
+    return render_edition(country, topic, g.public_language)
 
 
 @app.route('/news/<country>/<topic_slug>', methods=['GET', 'POST'])
@@ -627,14 +625,63 @@ def edition(country, topic_slug):
     topic = SLUG_TOPICS.get(topic_slug.lower())
     if country not in COUNTRIES or not topic:
         abort(404)
-    return render_edition(country, topic, request.args.get('language', 'Original'))
+    return render_edition(country, topic, g.public_language)
+
+
+@app.before_request
+def public_language_preference():
+    if request.endpoint not in {'index', 'edition', 'search', 'information_page', 'public_feedback'}:
+        return
+    country = (request.view_args or {}).get('country') or (
+        request.args.get('country') if request.endpoint == 'index' else None
+    ) or session.get('public_country', 'tanzania')
+    country = country.lower()
+    if country not in COUNTRIES:
+        country = 'tanzania'
+    language = resolve_language(
+        country, request.args.get('language', session.get('public_language', 'Original'))
+    ) or 'Original'
+    g.public_country, g.public_language = country, language
+    if request.args.get('language') is not None:
+        session['public_language'] = language
+    if country != session.get('public_country', 'tanzania'):
+        session['public_country'] = country
+
+
+def public_language_links(country, endpoint, params):
+    original = PUBLIC_SITE_URL + url_for(endpoint, **{**params, 'language': 'Original'})
+    has_service = bool(os.environ.get('GOOGLE_TRANSLATE_API_KEY', '').strip())
+    return {
+        choice: (google_website_url(original, choice)
+                 if not has_service and choice != 'Original'
+                 else url_for(endpoint, **{**params, 'language': choice}))
+        for choice in ['Original', *COUNTRY_LANGUAGES[country]]
+    }, original
+
+
+def localize_public_page(html, language, original_url):
+    try:
+        return translate_page(html, language)
+    except TranslationUnavailable as exc:
+        app.logger.warning('Public translation unavailable: %s', exc)
+        notice = render_template('_translation_notice.html', language=language,
+                                 google_url=google_website_url(original_url, language))
+        return re.sub(r'<main\b[^>]*>', lambda match: match[0] + notice, html, count=1)
+
+
+def render_public_page(template, **context):
+    params = {**request.args.to_dict(), **(request.view_args or {})}
+    links, original = public_language_links(g.public_country, request.endpoint, params)
+    html = render_template(template, language=g.public_language, language_urls=links, **context)
+    return localize_public_page(html, g.public_language, original)
 
 
 def render_edition(country, topic, language='Original'):
     language = resolve_language(country, language) or 'Original'
     query = request.args.get('q', '').strip()[:200]
+    page_size = 9
     articles, total, page, pages, latest = newsroom.public_article_page(
-        country, topic, requested_page(), query)
+        country, topic, requested_page(), query, per_page=page_size)
     updated = east_africa_time(latest) if latest else None
     values = {field: '' for field in ('name', 'country', 'comment')}
     errors = {}
@@ -648,15 +695,8 @@ def render_edition(country, topic, language='Original'):
                             **(request.view_args or {})}) + '#reader-feedback', code=303)
     received = session.pop('home_feedback_received', False) if request.method == 'GET' else False
     pagination = page_links(page, pages, country=country, topic=topic, language=language, q=query)
-    google_external = not bool(os.environ.get('GOOGLE_TRANSLATE_API_KEY', '').strip())
-    original_path = url_for('edition', country=country, topic_slug=TOPIC_SLUGS[topic],
-                            language='Original', page=page, q=query)
-    original_url = PUBLIC_SITE_URL + original_path
-    language_urls = {}
-    for choice in ['Original', *COUNTRY_LANGUAGES[country]]:
-        language_urls[choice] = (google_website_url(original_url, choice)
-            if google_external and choice != 'Original' else
-            url_for('edition', country=country, topic_slug=TOPIC_SLUGS[topic], language=choice, page=page, q=query))
+    language_urls, original_url = public_language_links(
+        country, 'edition', {'country': country, 'topic_slug': TOPIC_SLUGS[topic], 'page': page, 'q': query})
     country_name = COUNTRIES[country]['name']
     canonical_path = '/' if country == 'tanzania' and topic == 'Top Stories' else f'/news/{country}/{TOPIC_SLUGS[topic]}'
     if page > 1:
@@ -669,28 +709,19 @@ def render_edition(country, topic, language='Original'):
                  'name': f'{country_name} {topic} news',
                  'itemListElement': [
                      {'@type': 'ListItem', 'position': position, 'name': article['title'], 'url': article['link']}
-                     for position, article in enumerate(articles, start=(page - 1) * 20 + 1)
+                     for position, article in enumerate(articles, start=(page - 1) * page_size + 1)
                      if article.get('link') and article['link'] != '#']}
     html = render_template('index.html', articles=articles, country=country,
                            total=total, page=page, pages=pages, pagination=pagination, query=query,
-                           language_urls=language_urls, google_external=google_external,
+                           language_urls=language_urls,
                            values=values, errors=errors, received=received,
                            country_info=COUNTRIES[country], countries=COUNTRIES,
                            topics=TOPICS, topic=topic, language=language,
-                           languages=['Original', *COUNTRY_LANGUAGES[country]],
                            interests=['Top Stories', 'Business', 'Technology'],
                            updated=updated, topic_slugs=TOPIC_SLUGS,
                            seo_title=seo_title, seo_description=seo_description,
                            canonical_url=f'{PUBLIC_SITE_URL}{canonical_path}', structured_data=item_list)
-    try:
-        return translate_page(html, language), 400 if errors else 200
-    except TranslationUnavailable as exc:
-        app.logger.warning('Edition translation unavailable: %s', exc)
-        notice = render_template('_translation_notice.html', language=language,
-                                 google_url=google_website_url(original_url, language))
-        return html.replace('<main class="container editorial-page">',
-                            '<main class="container editorial-page">' + notice, 1), 400 if errors else 200
-
+    return localize_public_page(html, language, original_url), 400 if errors else 200
 
 
 #Search function
@@ -699,7 +730,7 @@ def search():
     query = request.args.get('q', '').strip()
     articles, total, page, pages, _ = newsroom.public_article_page(None, 'Top Stories', requested_page(), query[:200])
     pagination = page_links(page, pages, q=query[:200])
-    return render_template('search_results.html', articles=articles, query=query, total=total, page=page, pages=pages, pagination=pagination,
+    return render_public_page('search_results.html', articles=articles, query=query, total=total, page=page, pages=pages, pagination=pagination,
                            countries=COUNTRIES, topics=TOPICS,
                            seo_title=f'Search results for {query} | Unganishwa' if query else 'Search | Unganishwa',
                            seo_description='Search trusted East African news sources on Unganishwa.',
@@ -738,7 +769,7 @@ def sitemap_xml():
 def information_page():
     slug = request.path.strip('/')
     page = INFO_PAGES[slug]
-    return render_template('info_page.html', page=page, seo_title=f"{page['title']} | Unganishwa",
+    return render_public_page('info_page.html', page=page, seo_title=f"{page['title']} | Unganishwa",
                            seo_description=page['intro'], canonical_url=f'{PUBLIC_SITE_URL}/{slug}')
 
 
@@ -752,7 +783,7 @@ def public_feedback():
             session['feedback_received'] = True
             return redirect(url_for('public_feedback'), code=303)
     received = session.pop('feedback_received', False) if request.method == 'GET' else False
-    return render_template('feedback.html', values=values, errors=errors, received=received,
+    return render_public_page('feedback.html', values=values, errors=errors, received=received,
                            seo_title='Share your feedback | Unganishwa'), 400 if errors else 200
 
 

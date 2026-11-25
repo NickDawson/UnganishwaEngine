@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Newsroom{% endblock %} | Unganishwa</title>
+  <script src="{{ url_for('static', filename='humdash/preferences.js') }}"></script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='humdash/humdash.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='humdash/admin.css') }}">
+</head>
+<body>
+{% macro theme_toggle(extra_class="") %}
+<button class="btn btn-icon {{ extra_class }}" type="button" data-theme-toggle aria-label="Dark mode">
+  <span class="theme-dark-icon" aria-hidden="true">☾</span><span class="theme-light-icon" aria-hidden="true">☀</span>
+</button>
+{% endmacro %}
+{% if newsroom_user %}
+<div class="admin-shell">
+  <aside class="admin-sidebar" id="sidebar">
+    <div class="brand-row">
+      <a class="admin-brand" href="{{ url_for('newsroom.inbox') }}"><span aria-hidden="true">U</span> Unganishwa</a>
+      <button class="btn btn-icon mobile-menu" type="button" data-nav-close aria-label="Close navigation">×</button>
+    </div>
+    {% macro nav_item(endpoint, label, related=none) %}
+      {% set active = request.endpoint in (endpoint, related) %}
+      <a class="list-group-item list-group-item-action{% if active %} active{% endif %}" href="{{ url_for(endpoint) }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
+    {% endmacro %}
+    <nav class="admin-nav" aria-label="Newsroom navigation">
+      <p class="admin-nav-heading">Newsroom</p>
+      <div class="list-group admin-nav-group">
+        {{ nav_item('newsroom.inbox', 'Daily inbox', 'newsroom.story') }}
+        {{ nav_item('newsroom.add_story', 'Add news') }}
+      </div>
+      {% if newsroom_user.role == 'admin' %}
+      <hr>
+      <p class="admin-nav-heading">Administration</p>
+      <div class="list-group admin-nav-group">
+        {{ nav_item('admin_sources', 'Sources', 'admin_edit_source') }}
+        {{ nav_item('websub.dashboard', 'WebSub') }}
+        {{ nav_item('newsroom.users', 'People & permissions') }}
+        {{ nav_item('admin_feedback', 'Reader feedback') }}
+        {{ nav_item('analytics', 'Analytics') }}
+      </div>
+      {% endif %}
+    </nav>
+  </aside>
+  <div class="admin-main">
+    <header class="admin-topbar">
+      <button class="btn btn-icon mobile-menu" type="button" data-nav-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Open navigation">☰</button>
+      <button class="btn btn-icon desktop-menu" type="button" data-nav-collapse aria-controls="sidebar" aria-expanded="true" aria-label="Collapse navigation">☰</button>
+      <span class="topbar-title">Newsroom</span>
+      {{ theme_toggle() }}
+      <button class="btn btn-icon fullscreen-toggle" type="button" data-fullscreen aria-label="Enter fullscreen" hidden>⛶</button>
+      <details class="admin-account">
+        <summary><span class="admin-avatar" aria-hidden="true">{{ newsroom_user.username[:1]|upper }}</span><span>{{ newsroom_user.username }}</span></summary>
+        <div class="account-menu"><a href="{{ url_for('index') }}">View website</a><a href="{{ url_for('admin_logout') }}">Sign out</a></div>
+      </details>
+    </header>
+    <div class="admin-workspace">{{ self.content() }}</div>
+  </div>
+</div>
+{% else %}
+  <div class="auth-background" aria-hidden="true">
+    <video data-auth-video muted loop playsinline preload="none" src="{{ url_for('static', filename='humdash/blend.mp4') }}"></video>
+  </div>
+  {{ theme_toggle("auth-theme") }}
+  {% block content %}{% endblock %}
+{% endif %}
+</body>
+</html>

@@ -1,4 +1,6 @@
 {% extends 'newsroom_base.html' %}
+{% block title %}Add news{% endblock %}
+
 {% block newsroom_content %}
 <div class="eyebrow">Newsroom / Add news</div><h1>Add a story</h1><p class="nr-muted">The story appears immediately and is categorized automatically when its subject is clear. You can review or change its category afterwards.</p>
 <form method="post" class="nr-card nr-form"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

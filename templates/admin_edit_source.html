@@ -1,4 +1,6 @@
-{% extends 'base.html' %}
+{% extends 'admin_base.html' %}
+{% block title %}Edit source{% endblock %}
+
 {% block content %}
 <main class="container edit-shell">
   <nav class="admin-breadcrumb"><a href="{{ url_for('admin_sources') }}">← Source network</a><span>/</span><strong>Edit source</strong><a class="logout-link" href="{{ url_for('admin_logout') }}">Log out</a></nav>

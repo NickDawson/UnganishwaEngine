@@ -39,10 +39,27 @@ def download(url):
     raise ValueError('Too many redirects')
 
 
+def feed_image(entry):
+    candidates = [*entry.get('media_content', []), *entry.get('links', [])]
+    for item in candidates:
+        mime = item.get('type', '').lower()
+        if item.get('medium') != 'image' and not mime.startswith('image/'):
+            continue
+        url = item.get('url') or item.get('href', '')
+        try:
+            parts = urlsplit(url)
+            if (len(url) <= 2048 and parts.scheme == 'https' and parts.hostname
+                    and not parts.username and not parts.password):
+                return url
+        except ValueError:
+            continue
+    return None
+
+
 def feed_articles(payload, source):
     parsed = feedparser.parse(payload)
     if not parsed.version and not parsed.entries:
         raise ValueError('Not an RSS or Atom feed')
     return [{'title': entry.get('title', ''), 'summary': entry.get('summary', ''),
-             'link': entry.get('link', ''), 'published': entry.get('published', 'Recently')}
+             'link': entry.get('link', ''), 'image_url': feed_image(entry), 'published': entry.get('published', 'Recently')}
             for entry in parsed.entries[:200]]

@@ -327,3 +327,15 @@ this behavior. If configured Cloud Translation fails, the original page stays
 visible with an explicit **Translate with Google** link. Feedback stays on the
 original site. For translation directly inside Unganishwa, enable the Cloud
 Translation API, configure its API key in the web service environment and restart.
+
+### Publisher images on Unganishwa Web
+
+Set `NEWS_IMAGE_HOSTS` to a comma-separated list of exact publisher or CDN hostnames
+whose owners have authorized direct display of their feed images. Set the same value
+for the web service and the collection worker. An empty list leaves stories text-only.
+
+RSS and Atom image URLs may be attached during collection. Recollect a feed to
+attach images to existing stories it still includes. Unganishwa stores the HTTPS URL
+and the browser loads the image from the publisher. The homepage lead uses the
+text layout when no image is available, it fails to load, or it is smaller than
+800 × 450 pixels.

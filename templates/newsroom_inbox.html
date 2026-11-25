@@ -1,4 +1,6 @@
 {% extends 'newsroom_base.html' %}
+{% block title %}Daily inbox{% endblock %}
+
 {% block newsroom_content %}
 <header class="nr-head"><div><div class="eyebrow">Newsroom / Daily inbox</div><h1>Incoming news</h1><p class="nr-muted">New stories are categorized automatically. Review uncertain stories or correct a category when needed.</p></div><a class="nr-button" href="{{ url_for('newsroom.add_story') }}">Add news</a></header>
 <form method="get" class="nr-filters nr-card">

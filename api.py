@@ -19,6 +19,7 @@ def register_api(app, countries, topics, load_articles, deduplicate_articles,
             'link': article.get('link', '#'),
             'published': article.get('published', 'Recently'),
             'minutes': article.get('minutes'),
+            **({'image_url': article['image_url']} if article.get('image_url') else {}),
         }
 
     def api_pagination(page, limit, total):

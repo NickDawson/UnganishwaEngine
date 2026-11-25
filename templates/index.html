@@ -1,81 +1,167 @@
-{% extends 'base.html' %}
+{% extends 'public_base.html' %}
+{% macro story_label(article) %}
+{{ article.topic or topic }} <span>·</span> {{ article.source }}
+{%- endmacro %}
 {% block content %}
-<div class="controls">
-  <div class="container filter-bar">
-    <div class="control-row">
-      <span class="label">Edition</span>
-      <select aria-label="Language" onchange="location.href=this.options[this.selectedIndex].dataset.url">
-        {% for item in languages %}<option value="{{ item }}" data-url="{{ language_urls[item] }}" {% if item == language %}selected{% endif %}>{{ item }}</option>{% endfor %}
-      </select>
-      {% if google_external %}<small class="translation-provider">Languages open in Google Translate ↗</small>{% endif %}
-      <span class="filter-divider"></span>
-      <span class="label">Region</span>
-      <select aria-label="Country" onchange="location.href=this.options[this.selectedIndex].dataset.url">
-        {% for key, info in countries.items() %}<option value="{{ key }}" data-url="{{ url_for('edition', country=key, topic_slug=topic_slugs[topic], language=language) }}" {% if key == country %}selected{% endif %}>{{ info.name }} · {{ info.code }}</option>{% endfor %}
-      </select>
-      <span class="edition-status"><i></i> News edition</span>
-    </div>
-    <nav class="topics" aria-label="News topics">
-      {% for item in topics %}<a class="topic {% if item == topic %}active{% endif %}" href="{{ url_for('edition', country=country, topic_slug=topic_slugs[item], language=language) }}">{{ item }}</a>{% endfor %}
-    </nav>
-  </div>
-</div>
-
 <main class="container editorial-page">
-  <header class="edition-head">
-    <div><div class="eyebrow">{{ country_info.name }} edition · {{ language }}</div><h1>The daily briefing.</h1></div>
-    <div class="edition-meta"><strong>{% if updated %}Updated {{ updated }}{% else %}Awaiting news{% endif %}</strong><span>{% if updated %}EAT (UTC+3) · {% endif %}{{ total }} stories · Page {{ page }} of {{ pages }}</span></div>
-  </header>
+  {% if request.endpoint == 'index' and page == 1 and not query and topic == 'Top Stories' %}
+  <section class="edition-hero">
+    <div class="hero-copy">
+      <h1>Many voices.<br>One region.</h1>
+      <p>News from East African publishers, all in one place.</p>
+      <div class="hero-actions">
+        <a class="edition-button edition-button-amber" href="#briefing">Read the briefing <span aria-hidden="true">→</span></a>
+        <small>Every story links to its original source.</small>
+      </div>
+    </div>
+    <img src="{{ url_for('static', filename='editorial/dar-waterfront.jpg') }}" alt="The Dar es Salaam waterfront" width="997" height="324" fetchpriority="high">
+  </section>
+  {% endif %}
 
-  <form class="edition-search" method="get" action="{{ url_for('edition', country=country, topic_slug=topic_slugs[topic]) }}">
-    <input type="hidden" name="language" value="{{ language }}">
-    <label for="edition-query">Search this edition</label><input id="edition-query" type="search" name="q" value="{{ query }}" maxlength="200" placeholder="Search headlines and stories"><button type="submit">Search</button>
-  </form>
-  <style>.edition-search{display:flex;align-items:center;flex-wrap:wrap;gap:12px;margin:0 0 28px}.edition-search label{font-size:13px;font-weight:700}.edition-search input[type=search]{flex:1;min-width:160px;padding:12px;border:1px solid var(--line);border-radius:6px;font:inherit}.edition-search button{padding:12px 20px;background:var(--teal);color:white;border:0;border-radius:6px;font:inherit}</style>
-  {% if articles %}
-  {% if page == 1 and not query %}
-  <section class="lead-layout" aria-label="Lead stories">
-    {% set lead = articles[0] %}
-    <a class="lead-story" href="{{ lead.link|default('#') }}" target="_blank" rel="noopener noreferrer">
-      <div class="story-kicker"><span>Lead story</span><span>{{ lead.topic|default(topic) }}</span></div>
-      <h2>{{ lead.title }}</h2>
-      <p>{{ lead.summary|striptags|truncate(300) }}</p>
-      <footer class="story-byline"><span>From <strong>{{ lead.source }}</strong></span><span>{{ lead.published }} · Read story ↗</span></footer>
-    </a>
-    <aside class="brief-stack">
-      <div class="brief-title"><span>Also in the briefing</span><small>Latest</small></div>
-      {% for article in articles[1:4] %}
-      <a class="brief-item" href="{{ article.link|default('#') }}" target="_blank" rel="noopener noreferrer">
-        <span class="brief-number">0{{ loop.index }}</span><div><small>{{ article.topic|default(topic) }} · {{ article.source }}</small><h3>{{ article.title }}</h3></div><b>↗</b>
-      </a>
-      {% else %}<p class="brief-empty">More stories will appear as sources publish.</p>{% endfor %}
-    </aside>
+  <section id="briefing" class="edition-briefing" aria-label="News">
+    <div class="edition-tools">
+      <div class="edition-selectors">
+        <label for="edition-country">Country</label>
+        <select id="edition-country" onchange="location.href=this.value">
+          {% for key, info in countries.items() %}
+          <option value="{{ url_for('edition', country=key, topic_slug=topic_slugs[topic], language=language) }}#briefing" {% if key == country %}selected{% endif %}>{{ info.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <form class="edition-find" method="get" action="{{ url_for('edition', country=country, topic_slug=topic_slugs[topic]) }}#briefing">
+        <input type="hidden" name="language" value="{{ language }}">
+        <label class="edition-visually-hidden" for="edition-query">Search this edition</label>
+        <input id="edition-query" type="search" name="q" value="{{ query }}" maxlength="200" placeholder="Search stories">
+        <button class="edition-button" type="submit">Search</button>
+      </form>
+    </div>
+    <nav class="edition-topics" aria-label="News topics">
+      {% for item in topics %}
+      <a href="{{ url_for('edition', country=country, topic_slug=topic_slugs[item], language=language) }}#briefing" {% if item == topic %}aria-current="page"{% endif %}>{{ item }}</a>
+      {% endfor %}
+    </nav>
+    <div class="edition-heading">
+      <div>
+        <p>{{ country_info.name }} · {{ language }}</p>
+        <h2 class="edition-section-title">{{ 'Search results' if query else topic }}</h2>
+      </div>
+      <small>{{ total }} {{ 'story' if total == 1 else 'stories' }}{% if updated %} · Updated {{ updated }} EAT{% elif not total %} · Awaiting news{% endif %}</small>
+    </div>
+    {% if articles %}
+      {% set featured = page == 1 and not query %}
+      {% if featured %}
+      <div class="edition-cards">
+        {% for article in articles[:3] %}
+        <article class="edition-card" id="story-{{ loop.index }}">
+          <div class="publisher-art" data-accent="{{ loop.index }}" aria-hidden="true"><span>{{ (article.source or 'U')[:1]|upper }}</span></div>
+          <div class="edition-card-copy">
+            <p class="edition-story-meta">{{ story_label(article) }}</p>
+            <h3><a href="{{ article.link|default('#') }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a></h3>
+            <p>{{ article.summary|striptags|truncate(150) }}</p>
+            <a class="edition-source" href="{{ article.link|default('#') }}" target="_blank" rel="noopener noreferrer">Read at the source ↗</a>
+          </div>
+        </article>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% set remaining = articles[3:] if featured else articles %}
+      <section id="latest" class="edition-latest {% if featured and remaining %}with-sidebar{% endif %}">
+        <div>
+          {% if remaining %}
+          <h2 class="edition-section-title">{{ 'Latest stories' if featured else 'News' }}</h2>
+          {% for article in remaining %}
+          <article class="edition-story-row" id="story-{{ loop.index + (3 if featured else 0) }}">
+            <div class="publisher-art" aria-hidden="true"><span>{{ (article.source or 'U')[:1]|upper }}</span></div>
+            <div>
+              <p class="edition-story-meta">{{ story_label(article) }}</p>
+              <h3><a href="{{ article.link|default('#') }}" target="_blank" rel="noopener noreferrer">{{ article.title }}</a></h3>
+              <p>{{ article.summary|striptags|truncate(170) }}</p>
+              <small>{{ article.published }}</small>
+            </div>
+            <a class="edition-source row-arrow" href="{{ article.link|default('#') }}" target="_blank" rel="noopener noreferrer" aria-label="Read at the source: {{ article.title }}">↗</a>
+          </article>
+          {% if loop.index == 4 and google_ads_client and google_ads_slot %}
+          <div class="ad-slot" aria-label="Advertisement"><span>Advertisement</span><ins class="adsbygoogle" data-ad-client="{{ google_ads_client }}" data-ad-slot="{{ google_ads_slot }}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(window.adsbygoogle=window.adsbygoogle||[]).push({});</script></div>
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+        </div>
+        {% if featured and remaining %}
+        <aside class="edition-quick">
+          <h2 class="edition-section-title">Also in the briefing</h2>
+          <ol>
+            {% for article in articles[:5] %}
+            <li><a href="#story-{{ loop.index }}">{{ article.title }}</a></li>
+            {% endfor %}
+          </ol>
+        </aside>
+        {% endif %}
+      </section>
+    {% else %}
+    <div id="latest" class="edition-empty">
+      <h3>{{ 'No stories match your search.' if query else 'There are no stories in this edition yet.' }}</h3>
+      <a class="edition-source" href="{{ url_for('edition', country=country, topic_slug=topic_slugs['Top Stories'], language=language) }}#briefing">Back to top stories ↗</a>
+    </div>
+    {% endif %}
+    {% include '_pagination.html' %}
   </section>
 
-  {% endif %}
-  <section class="latest-section" id="latest">
-    <div class="section-rule"><div><span class="eyebrow">Stay informed</span><h2>Latest across {{ country_info.name }}</h2></div><span>{{ topic }}</span></div>
-    <div class="editorial-list">
-      {% set offset = 4 if page == 1 and not query else 0 %}
-      {% for article in articles[offset:] %}
-      <a class="editorial-row" href="{{ article.link|default('#') }}" target="_blank" rel="noopener noreferrer">
-        <span class="row-index">{{ '%02d'|format((page - 1) * 20 + offset + loop.index) }}</span>
-        <div class="row-copy"><div class="row-meta">{{ article.topic|default(topic) }} · {{ article.published }}</div><h3>{{ article.title }}</h3><p>{{ article.summary|striptags|truncate(170) }}</p></div>
-        <div class="row-source"><span>Source</span><strong>{{ article.source }}</strong><b>↗</b></div>
-      </a>
-      {% if loop.index == 4 %}<div class="ad-slot" aria-label="Advertisement"><span>Advertisement</span>{% if google_ads_client and google_ads_slot %}<ins class="adsbygoogle" data-ad-client="{{ google_ads_client }}" data-ad-slot="{{ google_ads_slot }}" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script>{% endif %}</div>{% endif %}
-      {% endfor %}
+  <section class="edition-discover" id="discover">
+    <div class="container">
+      <h2 class="edition-section-title">Explore East Africa</h2>
+      <div class="edition-countries">
+        {% for key, info in countries.items() %}
+        <a href="{{ url_for('edition', country=key, topic_slug=topic_slugs['Top Stories'], language=language) }}#briefing">
+          <img src="{{ url_for('static', filename='editorial/' ~ key ~ '.jpg', v='2') }}" alt="" width="768" height="342" loading="lazy" decoding="async">
+          <span><strong>{{ info.name }}</strong> <span aria-hidden="true">→</span></span>
+        </a>
+        {% endfor %}
+      </div>
     </div>
   </section>
-  {% else %}
-  <section class="empty-editorial"><span>Edition update</span><h2>{{ 'No matching stories.' if query else 'No stories in this topic yet.' }}</h2><p>Try Top Stories or choose another topic while our sources publish their next updates.</p><a href="{{ url_for('edition', country=country, topic_slug=topic_slugs['Top Stories'], language=language) }}">Return to Top Stories</a></section>
-  {% endif %}
 
-  {% include '_pagination.html' %}
+  <section class="edition-topic-directory">
+    <h2 class="edition-section-title">Browse by topic</h2>
+    <nav class="edition-topics" aria-label="Explore topics">
+      {% for item in topics if item != 'Top Stories' %}
+      <a href="{{ url_for('edition', country=country, topic_slug=topic_slugs[item], language=language) }}#briefing">{{ item }}</a>
+      {% endfor %}
+    </nav>
+  </section>
+
+  <section class="edition-about" id="about-unganishwa">
+    <div>
+      <h2 class="edition-section-title">About Unganishwa</h2>
+      <p>We gather news from publishers across the region. Every story links to its original source.</p>
+      <a class="edition-source" href="/about">Read more ↗</a>
+    </div>
+    <img src="{{ url_for('static', filename='editorial/street-scene.jpg') }}" alt="Daily life in an East African city" width="408" height="178" loading="lazy">
+  </section>
+
+  <div class="edition-bottom-grid">
+    <section class="edition-faq">
+      <h2 class="edition-section-title">Frequently asked questions</h2>
+      <details><summary>Where does the news come from?</summary><p>Stories come from East African publishers. Each article links to the publisher’s website.</p></details>
+      <details><summary>How do I find news from my country?</summary><p>Use the <a href="#briefing">country selector</a> or pick an edition in <a href="#discover">Explore East Africa</a>.</p></details>
+    </section>
+    <section class="edition-newsletter" id="newsletter">
+      <h2>Get the briefing by email</h2>
+      <p>Subscribe to the East Africa news briefing.</p>
+      <form action="{{ url_for('subscribe') }}" method="post">
+        <label class="edition-visually-hidden" for="edition-email">Email address</label>
+        <input id="edition-email" type="email" name="email" placeholder="Email address" required>
+        <button class="edition-button edition-button-amber" type="submit">Subscribe</button>
+      </form>
+      {% if request.args.get('subscribed') == 'success' %}<p role="status">You’re subscribed.</p>
+      {% elif request.args.get('subscribed') == 'invalid' %}<p role="status">Enter a valid email address.</p>{% endif %}
+    </section>
+  </div>
+
   {% include '_home_feedback.html' %}
 
-  <section class="trust-strip"><div><span>01</span><strong>Trusted sources</strong><small>Every publisher is reviewed by our editors.</small></div><div><span>02</span><strong>Regional focus</strong><small>Coverage shaped around East African readers.</small></div><div><span>03</span><strong>Reader control</strong><small>Choose the countries and topics that matter.</small></div></section>
-
-  <section class="app-promo" id="download-app"><div><div class="eyebrow" style="color:#f5c85b">Unganishwa for Android</div><h2>Your region, in your pocket.</h2><p>Choose your country and topics, save important stories and stay close to trusted local voices.</p><a class="download-button" href="{{ url_for('static', filename='downloads/unganishwa.apk', v='1.1.0-2') }}" download>↓ Download Android APK · v1.1.0</a></div><div class="type-poster" aria-hidden="true"><span>EA</span><strong>08</strong><small>regions<br>one briefing</small></div></section>
+  <section class="edition-app" id="download-app">
+    <div><h2>Unganishwa for Android</h2><p>Follow the countries and topics you care about on your phone.</p></div>
+    <a class="edition-button" href="{{ url_for('static', filename='downloads/unganishwa.apk', v='1.1.0-2') }}" download>Download APK · v1.1.0 ↓</a>
+  </section>
 </main>
 {% endblock %}

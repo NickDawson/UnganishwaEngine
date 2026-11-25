@@ -1,4 +1,6 @@
 {% extends 'newsroom_base.html' %}
+{% block title %}People & permissions{% endblock %}
+
 {% macro permissions(user=none) %}
 <label>Role<select name="role">{% for key, name in roles.items() %}<option value="{{ key }}" {% if (user and user.role == key) or (not user and key == 'categorizer') %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
 <fieldset><legend>Countries this person can manage</legend><div class="nr-checks">{% for key, info in countries.items() %}<label><input type="checkbox" name="countries" value="{{ key }}" {% if user and key in user.countries %}checked{% endif %}>{{ info.name }}</label>{% endfor %}</div></fieldset>

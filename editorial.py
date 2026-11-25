@@ -52,6 +52,10 @@ class Newsroom:
         self.timezone = ZoneInfo(os.environ.get('NEWSROOM_TIMEZONE', 'Africa/Nairobi'))
         self.owner_name, self.owner_hash = owner_name, owner_hash
         self.postgres = postgres
+        self.image_hosts = {
+            host.strip().lower() for host in os.environ.get('NEWS_IMAGE_HOSTS', '').split(',')
+            if host.strip()
+        }
         self.collect_source = None
         self.init_schema()
         bp = Blueprint('newsroom', __name__)
@@ -136,6 +140,12 @@ class Newsroom:
                 version INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL, categorized_by TEXT, reviewed_by TEXT,
                 published_at TEXT, UNIQUE(country, link))''')
+            if self.postgres:
+                self.sql(db, 'ALTER TABLE newsroom_articles ADD COLUMN IF NOT EXISTS image_url TEXT')
+            else:
+                columns = self.sql(db, 'PRAGMA table_info(newsroom_articles)').fetchall()
+                if not any(column['name'] == 'image_url' for column in columns):
+                    self.sql(db, 'ALTER TABLE newsroom_articles ADD COLUMN image_url TEXT')
             self.sql(db, '''CREATE INDEX IF NOT EXISTS newsroom_article_queue
                 ON newsroom_articles(status, country, created_at)''')
             self.sql(db, '''CREATE TABLE IF NOT EXISTS newsroom_audit (
@@ -214,6 +224,14 @@ class Newsroom:
             article['country'] in user['countries'] and
             (not article['topic'] or article['topic'] in user['categories']))
 
+    def approved_image(self, value):
+        url = article_url(value)
+        if url and len(url) <= 2048:
+            parts = urlsplit(url)
+            if parts.scheme == 'https' and parts.hostname in self.image_hosts:
+                return value
+        return None
+
     def ingest(self, source, articles, actor=None):
         """Never overwrite decisions when polling or a hub redelivers an article."""
         inserted = 0
@@ -231,12 +249,17 @@ class Newsroom:
                     continue
                 identity = hashlib.sha256((source['country'] + '\n' + link).encode()).hexdigest()
                 summary = plain_text(article.get('summary'), 10000)
+                image = self.approved_image(article.get('image_url'))
                 cursor = self.sql(db, '''INSERT INTO newsroom_articles
-                    (id, source_id, source, country, title, summary, link, published, created_at, updated_at, topic, status)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uncategorized') ON CONFLICT DO NOTHING''',
+                    (id, source_id, source, country, title, summary, link, published, created_at, updated_at, topic, image_url, status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'uncategorized') ON CONFLICT DO NOTHING''',
                     (identity, source.get('id'), source['source_name'], source['country'], title,
                      summary, link,
-                     plain_text(article.get('published') or 'Recently', 200), now(), now(), None))
+                     plain_text(article.get('published') or 'Recently', 200), now(), now(), None, image))
+                if cursor.rowcount == 0 and image:
+                    self.sql(db, '''UPDATE newsroom_articles SET image_url = ?
+                        WHERE id = ? AND source_id = ? AND image_url IS NULL''',
+                             (image, identity, source.get('id')))
                 if cursor.rowcount == 1:
                     inserted += 1
                     pending.append((identity, title, summary, link))
@@ -308,6 +331,7 @@ class Newsroom:
         articles = []
         for row in rows:
             article = dict(row)
+            article['image_url'] = self.approved_image(article.get('image_url'))
             if article['status'] == 'uncategorized' or article['topic'] not in self.categories:
                 article['topic'] = 'Uncategorized'
             articles.append(article)

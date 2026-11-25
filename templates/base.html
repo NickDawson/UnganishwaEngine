@@ -625,8 +625,10 @@
       crossorigin="anonymous"
     ></script>
     {% endif %}
+    {% block page_styles %}{% endblock %}
   </head>
-  <body>
+  <body class="{% block body_class %}{% endblock %}">
+    {% block masthead %}
     <header class="topbar">
       <div class="nav">
         <a class="brand" href="{{ url_for('index') }}"
@@ -648,6 +650,7 @@
         </form>
       </div>
     </header>
+    {% endblock %}
     {% if newsroom_user and (request.path.startswith('/admin') or request.path == '/analytics') %}
 <nav class="container" aria-label="Newsroom navigation" style="display:flex;gap:18px;flex-wrap:wrap;padding-top:20px;padding-bottom:20px;border-bottom:1px solid #d9e2de;font-size:13px;font-weight:700">
 <a href="{{ url_for('newsroom.inbox') }}">Daily inbox</a><a href="{{ url_for('newsroom.add_story') }}">Add news</a>
@@ -655,6 +658,7 @@
 <span style="margin-left:auto">{{ newsroom_user.username }}</span><a href="{{ url_for('admin_logout') }}">Log out</a>
 </nav>{% endif %}
 {% block content %}{% endblock %}
+    {% block site_footer %}
     <footer>
       <div class="container footer-grid">
         <div><strong>unganishwa.</strong><br />Independent context for East Africa, in the language you choose.<div class="footer-links"><a href="/about">About</a><a href="/contact">Contact</a><a href="{{ url_for('public_feedback') }}">Feedback</a><a href="{{ url_for('admin_login') }}">Admin</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="/editorial-policy">Editorial policy</a><a href="/corrections">Corrections</a></div></div>
@@ -698,6 +702,7 @@
         </div>
       </div>
     </footer>
+    {% endblock %}
     <script>
       document
         .querySelectorAll(".article,.app-promo")
