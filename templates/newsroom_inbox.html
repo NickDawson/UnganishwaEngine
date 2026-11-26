@@ -2,7 +2,15 @@
 {% block title %}Daily inbox{% endblock %}
 
 {% block newsroom_content %}
-<header class="nr-head"><div><div class="eyebrow">Newsroom / Daily inbox</div><h1>Incoming news</h1><p class="nr-muted">New stories are categorized automatically. Review uncertain stories or correct a category when needed.</p></div><a class="nr-button" href="{{ url_for('newsroom.add_story') }}">Add news</a></header>
+<header class="nr-head"><div><div class="eyebrow">Newsroom / Daily inbox</div><h1>Incoming news</h1><p class="nr-muted">New stories are categorized automatically. Review uncertain stories or correct a category when needed.</p></div><div class="nr-actions">
+  {% if ollama_configured %}
+  <span class="nr-ollama-badge">
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="7" width="16" height="12" rx="3"/><path d="M12 7V4m-3 8h.01m6 0h.01m-5 4h4M2 12v3m20-3v3"/></svg>
+    Ollama (AI) configured
+  </span>
+  {% endif %}
+  <a class="nr-button" href="{{ url_for('newsroom.add_story') }}">Add news</a>
+</div></header>
 <form method="get" class="nr-filters nr-card">
 <label>Received on<input type="date" name="day" value="{{ day }}"></label>
 <label>Status<select name="status"><option value="all">All news</option>{% for item in states %}<option value="{{ item }}" {% if item == status %}selected{% endif %}>{{ 'Categorized' if item == 'published' else ('Needs review' if item == 'uncategorized' else item|capitalize) }}</option>{% endfor %}</select></label>

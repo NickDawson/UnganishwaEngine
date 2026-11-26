@@ -84,7 +84,7 @@ INFO_PAGES = {
             ('About this service',
              'The company Unganishwa operates this news discovery service and is responsible for the personal information it collects as described in this policy. The service links readers to reporting from independent publishers. For questions about this policy or requests concerning your information, contact info@unganishwa.com.'),
             ('Information you provide',
-             'When you subscribe, we store your email address, subscription time and whether you subscribed through the website or mobile service. When you submit feedback, we store the name, country and comment you enter, the submission time and its source. Feedback is available to authorised staff for review. Please do not include sensitive personal information in your comments. If you register for notifications through a connected service, we store the notification token, device platform and registration time.'),
+             'When you subscribe, we store your email address, subscription time and whether you subscribed through the website or mobile service. When you submit feedback, we store the name, country and comment you enter, the submission time and its source. The website also requires an email address so authorised staff can follow up on your feedback. Feedback is available to authorised staff for review. Please do not include sensitive personal information in your comments. If you register for notifications through a connected service, we store the notification token, device platform and registration time.'),
             ('Visit statistics and technical information',
              'We record page-view counts, the country edition visited, first and most recent visit times, and a hashed browser identifier to estimate returning visitors. Where configured, we estimate your country from your IP address using a local lookup database or a trusted proxy country header. Our application analytics store the country result rather than the raw IP address. These browser identifiers are pseudonymous, not fully anonymous. The web server and hosting infrastructure may separately process IP addresses, requested URLs and browser information in access or security logs.'),
             ('Cookies used by Unganishwa',
@@ -199,11 +199,17 @@ def init_analytics():
             id TEXT PRIMARY KEY, name TEXT NOT NULL, comment TEXT NOT NULL,
             country TEXT NOT NULL, created_at TEXT NOT NULL)''')
         if DATABASE_URL:
+            execute_sql(db, 'ALTER TABLE reader_feedback ADD COLUMN IF NOT EXISTS email TEXT')
             execute_sql(db, "ALTER TABLE reader_feedback ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'unknown'")
         else:
             columns = {row['name'] for row in execute_sql(db, 'PRAGMA table_info(reader_feedback)').fetchall()}
+            if 'email' not in columns:
+                execute_sql(db, 'ALTER TABLE reader_feedback ADD COLUMN email TEXT')
             if 'source' not in columns:
                 execute_sql(db, "ALTER TABLE reader_feedback ADD COLUMN source TEXT NOT NULL DEFAULT 'unknown'")
+        execute_sql(db, 'CREATE INDEX IF NOT EXISTS reader_feedback_created ON reader_feedback (created_at, id)')
+        execute_sql(db, '''CREATE TABLE IF NOT EXISTS reader_feedback_seen (
+            admin_id TEXT PRIMARY KEY, last_seen TEXT NOT NULL)''')
         for region in COUNTRIES:
             execute_sql(db, 'INSERT INTO portal_stats (region) VALUES (?) ON CONFLICT (region) DO NOTHING', (region,))
         db.commit()
@@ -600,10 +606,14 @@ def submit_reader_feedback():
         values[field] = request.form.get(field, '').strip()
         if not values[field] or len(values[field]) > maximum:
             errors[field] = f'Please enter {field} (up to {maximum} characters).'
+    email = values['email'] = request.form.get('email', '').strip()
+    if len(email) > 254 or not re.fullmatch(r'[^@\s]+@[^@\s]+\.[^@\s]+', email):
+        errors['email'] = 'Please enter a valid email address.'
     if not errors:
         db = get_db()
-        execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at, source) VALUES (?, ?, ?, ?, ?, ?)',
-                    (str(uuid.uuid4()), values['name'], values['comment'], values['country'], datetime.now(timezone.utc).isoformat(), 'web'))
+        execute_sql(db, 'INSERT INTO reader_feedback (id, name, comment, country, created_at, source, email) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    (str(uuid.uuid4()), values['name'], values['comment'], values['country'],
+                     datetime.now(timezone.utc).isoformat(), 'web', email))
         db.commit()
     return values, errors
 
@@ -681,7 +691,7 @@ def render_edition(country, topic, language='Original'):
     articles, total, page, pages, latest = newsroom.public_article_page(
         country, topic, requested_page(), query, per_page=page_size)
     updated = east_africa_time(latest) if latest else None
-    values = {field: '' for field in ('name', 'country', 'comment')}
+    values = {field: '' for field in ('name', 'country', 'email', 'comment')}
     errors = {}
     if request.method == 'POST':
         values, errors = submit_reader_feedback()
@@ -773,7 +783,7 @@ def information_page():
 
 @app.route('/feedback', methods=['GET', 'POST'])
 def public_feedback():
-    values = {field: '' for field in ('name', 'country', 'comment')}
+    values = {field: '' for field in ('name', 'country', 'email', 'comment')}
     errors = {}
     if request.method == 'POST':
         values, errors = submit_reader_feedback()
@@ -783,6 +793,20 @@ def public_feedback():
     received = session.pop('feedback_received', False) if request.method == 'GET' else False
     return render_public_page('feedback.html', values=values, errors=errors, received=received,
                            seo_title='Share your feedback | Unganishwa'), 400 if errors else 200
+
+
+@app.template_global()
+def has_new_reader_feedback():
+    user = newsroom.current_user()
+    if not user or user['role'] != 'admin':
+        return False
+    row = execute_sql(get_db(), '''
+        SELECT 1 AS unread FROM reader_feedback
+        WHERE created_at > COALESCE(
+            (SELECT last_seen FROM reader_feedback_seen WHERE admin_id = ?), '')
+        LIMIT 1
+    ''', (user['id'],)).fetchone()
+    return row is not None
 
 
 @app.route('/admin/feedback')
@@ -795,15 +819,21 @@ def admin_feedback():
     where = ''
     params = []
     if term:
-        where = ' WHERE LOWER(name) LIKE ? OR LOWER(country) LIKE ? OR LOWER(comment) LIKE ?'
-        params = ['%' + term.lower() + '%'] * 3
+        where = ' WHERE LOWER(name) LIKE ? OR LOWER(country) LIKE ? OR LOWER(comment) LIKE ? OR LOWER(email) LIKE ?'
+        params = ['%' + term.lower() + '%'] * 4
     db = get_db()
     total = execute_sql(db, 'SELECT COUNT(*) AS count FROM reader_feedback' + where, params).fetchone()['count']
     pages = max(1, (total + 19) // 20)
     page = min(page, pages)
-    feedback = execute_sql(db, 'SELECT name, country, comment, created_at, source FROM reader_feedback' + where +
+    feedback = execute_sql(db, 'SELECT name, country, email, comment, created_at, source FROM reader_feedback' + where +
                            ' ORDER BY created_at DESC, id DESC LIMIT 20 OFFSET ?',
                            [*params, (page - 1) * 20]).fetchall()
+    if not term and page == 1 and feedback:
+        execute_sql(db, '''INSERT INTO reader_feedback_seen (admin_id, last_seen)
+            VALUES (?, ?) ON CONFLICT (admin_id) DO UPDATE SET last_seen = excluded.last_seen
+            WHERE reader_feedback_seen.last_seen < excluded.last_seen''',
+                    (newsroom.current_user()['id'], feedback[0]['created_at']))
+        db.commit()
     return render_template('admin_feedback.html', feedback=feedback, total=total,
                            page=page, pages=pages, q=term)
 

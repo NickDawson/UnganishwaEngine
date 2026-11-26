@@ -385,7 +385,8 @@ class Newsroom:
                             [*params, (page - 1) * 20]).fetchall()
         return render_template('newsroom_inbox.html', articles=rows, states=STATES, status=state,
                                countries=self.countries, categories=self.categories, country=country,
-                               category=category, q=term, page=page, pages=pages, total=total, day=day, newsroom_timezone=str(self.timezone))
+                               category=category, q=term, page=page, pages=pages, total=total, day=day, newsroom_timezone=str(self.timezone),
+                               ollama_configured=classification_actor() == 'Ollama (AI)')
 
     def story(self, article_id):
         user = self.current_user()

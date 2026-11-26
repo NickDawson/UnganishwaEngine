@@ -22,9 +22,9 @@
       <a class="admin-brand" href="{{ url_for('newsroom.inbox') }}"><span aria-hidden="true">U</span> Unganishwa</a>
       <button class="btn btn-icon mobile-menu" type="button" data-nav-close aria-label="Close navigation">×</button>
     </div>
-    {% macro nav_item(endpoint, label, related=none) %}
+    {% macro nav_item(endpoint, label, related=none, unread=false) %}
       {% set active = request.endpoint in (endpoint, related) %}
-      <a class="list-group-item list-group-item-action{% if active %} active{% endif %}" href="{{ url_for(endpoint) }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
+      <a class="list-group-item list-group-item-action{% if active %} active{% endif %}" href="{{ url_for(endpoint) }}"{% if active %} aria-current="page"{% endif %}>{{ label }}{% if unread %}<span class="feedback-unread-dot" aria-hidden="true"></span><span class="admin-visually-hidden"> (New feedback)</span>{% endif %}</a>
     {% endmacro %}
     <nav class="admin-nav" aria-label="Newsroom navigation">
       <p class="admin-nav-heading">Newsroom</p>
@@ -39,7 +39,7 @@
         {{ nav_item('admin_sources', 'Sources', 'admin_edit_source') }}
         {{ nav_item('websub.dashboard', 'WebSub') }}
         {{ nav_item('newsroom.users', 'People & permissions') }}
-        {{ nav_item('admin_feedback', 'Reader feedback') }}
+        {{ nav_item('admin_feedback', 'Reader feedback', unread=has_new_reader_feedback()) }}
         {{ nav_item('analytics', 'Analytics') }}
       </div>
       {% endif %}

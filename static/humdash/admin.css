@@ -44,6 +44,9 @@ body { margin: 0; background: var(--admin-workspace); color: var(--admin-text); 
 .admin-nav .list-group-item:not(.active) { color: var(--admin-muted); }
 .admin-nav .list-group-item.active, .admin-nav .list-group-item:hover { color: var(--admin-accent-ink); background: var(--admin-accent-soft); }
 .admin-nav .list-group-item.active { font-weight: 600; }
+.feedback-unread-dot { align-self: flex-start; width: .55rem; height: .55rem; margin-inline-start: auto; margin-top: .15rem; flex: none; border-radius: 50%; background: #dc2626; }
+.dark .feedback-unread-dot { background: #f87171; }
+.admin-visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .admin-main { min-width: 0; }
 .admin-topbar { position: sticky; top: 0; z-index: 5; padding-inline: clamp(1rem, 3vw, 2rem); background: var(--admin-workspace); border-bottom: 1px solid var(--admin-border); }
 .topbar-title { flex: 1; font-weight: 650; }
@@ -91,4 +94,10 @@ body { margin: 0; background: var(--admin-workspace); color: var(--admin-text); 
   .admin-shell .admin-sidebar[data-open] { display: block; }
   .mobile-menu { display: inline-flex; }
   .desktop-menu { display: none; }
+}
+
+.nr-ollama-badge {
+    display: inline-flex; align-items: center; gap: .5rem; padding: .45rem .7rem;
+    border-radius: .5rem; background: var(--admin-accent-soft); color: var(--admin-accent-ink);
+    font-size: .8rem; font-weight: 650;
 }

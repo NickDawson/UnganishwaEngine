@@ -217,7 +217,7 @@
 .home-feedback form { min-width: 0; padding: clamp(24px, 4vw, 40px); }
 .home-feedback .feedback-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
 .home-feedback .feedback-field { display: grid; gap: 7px; min-width: 0; }
-.home-feedback .feedback-comment { grid-column: 1 / -1; }
+.home-feedback :is(.feedback-email, .feedback-comment) { grid-column: 1 / -1; }
 .home-feedback label { font-size: .875rem; font-weight: 700; }
 .home-feedback :is(input, textarea) {
   width: 100%;

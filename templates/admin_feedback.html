@@ -7,7 +7,7 @@
   <span class="nr-pill">{{ total }} submission{{ '' if total == 1 else 's' }}</span>
 </header>
 <form class="nr-card nr-actions" method="get" action="{{ url_for('admin_feedback') }}" role="search">
-  <label style="flex:1;min-width:180px" for="feedback-search">Search feedback<input id="feedback-search" name="q" value="{{ q }}" maxlength="200" placeholder="Name, country or comment"></label>
+  <label style="flex:1;min-width:180px" for="feedback-search">Search feedback<input id="feedback-search" name="q" value="{{ q }}" maxlength="200" placeholder="Name, country, email or comment"></label>
   <button type="submit">Search</button>
   {% if q %}<a class="nr-button secondary" href="{{ url_for('admin_feedback') }}">Clear</a>{% endif %}
 </form>
@@ -15,10 +15,11 @@
 {% for item in feedback %}
   <article class="nr-card feedback-card">
     <header class="nr-head"><div><h2 dir="auto">{{ item.name }}</h2><span class="nr-pill" dir="auto">{{ item.country }}</span> <span class="nr-pill">Source: {{ {'web': 'Web', 'app': 'App'}.get(item.source, 'Unknown') }}</span></div><time class="nr-muted" datetime="{{ item.created_at }}">{{ item.created_at|east_africa_time }} EAT (UTC+3)</time></header>
+    {% if item.email %}<p class="nr-muted feedback-email" dir="auto">{{ item.email }}</p>{% endif %}
     <p class="feedback-comment" dir="auto">{{ item.comment }}</p>
   </article>
 {% else %}
-  <div class="nr-card"><h2>{{ 'No matching feedback' if q else 'No feedback yet' }}</h2><p class="nr-muted">{{ 'Try another name, country or phrase.' if q else 'When readers send feedback from the app or website, it will appear here.' }}</p></div>
+  <div class="nr-card"><h2>{{ 'No matching feedback' if q else 'No feedback yet' }}</h2><p class="nr-muted">{{ 'Try another name, country, email or phrase.' if q else 'When readers send feedback from the app or website, it will appear here.' }}</p></div>
 {% endfor %}
 </section>
 {% if pages > 1 %}
@@ -28,5 +29,5 @@
   {% if page < pages %}<a class="nr-button secondary" href="{{ url_for('admin_feedback', page=page+1, q=q) }}">Next →</a>{% endif %}
 </nav>
 {% endif %}
-<style>.feedback-card h2{margin:0 0 10px;font-size:22px;overflow-wrap:anywhere}.feedback-comment{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin-bottom:0}.feedback-card .nr-head>div{min-width:0}.feedback-card .nr-pill{white-space:normal;overflow-wrap:anywhere}</style>
+<style>.feedback-card h2{margin:0 0 10px;font-size:22px;overflow-wrap:anywhere}.feedback-email{overflow-wrap:anywhere}.feedback-comment{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;margin-bottom:0}.feedback-card .nr-head>div{min-width:0}.feedback-card .nr-pill{white-space:normal;overflow-wrap:anywhere}</style>
 {% endblock %}

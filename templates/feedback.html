@@ -2,15 +2,15 @@
 {% block content %}
 <main class="container public-page">
   <div class="home-feedback public-feedback">
-  <section class="feedback-intro-panel"><h1>Share your feedback</h1><p>A suggestion, a question or something we can do better? We would love to hear from you.</p><small>Your name, country and comment are shared privately with our team to improve Unganishwa. They will not appear publicly.</small></section>
+  <section class="feedback-intro-panel"><h1>Share your feedback</h1><p>A suggestion, a question or something we can do better? We would love to hear from you.</p><small>Your name, country, email address and comment are shared privately with our team to improve Unganishwa. They will not appear publicly.</small></section>
   <section class="feedback-form-panel" aria-label="Share feedback">
     {% if received %}<div class="feedback-success" role="status"><strong>Thank you for your feedback!</strong><p>Your message has been received by our team.</p><a href="{{ url_for('index') }}">Back to the news →</a></div>{% else %}
     {% if errors %}<p role="alert" class="feedback-error">Please check the highlighted fields below.</p>{% endif %}
     <form action="{{ url_for('public_feedback') }}" method="post">
       <div class="feedback-fields">
-      {% for field, label, limit in [('name', 'Your name', 100), ('country', 'Your country', 100), ('comment', 'Your comment', 2000)] %}
+      {% for field, label, limit in [('name', 'Your name', 100), ('country', 'Your country', 100), ('email', 'Email address', 254), ('comment', 'Your comment', 2000)] %}
       <div class="feedback-field feedback-{{ field }}"><label for="feedback-{{ field }}">{{ label }}</label>
-      {% if field == 'comment' %}<textarea id="feedback-{{ field }}" name="{{ field }}" rows="7" maxlength="{{ limit }}" required {% if errors.get(field) %}aria-invalid="true" aria-describedby="error-{{ field }}"{% endif %}>{{ values[field] }}</textarea>{% else %}<input id="feedback-{{ field }}" name="{{ field }}" value="{{ values[field] }}" maxlength="{{ limit }}" autocomplete="{{ 'name' if field == 'name' else 'country-name' }}" required {% if errors.get(field) %}aria-invalid="true" aria-describedby="error-{{ field }}"{% endif %}>{% endif %}
+      {% if field == 'comment' %}<textarea id="feedback-{{ field }}" name="{{ field }}" rows="7" maxlength="{{ limit }}" required {% if errors.get(field) %}aria-invalid="true" aria-describedby="error-{{ field }}"{% endif %}>{{ values[field] }}</textarea>{% else %}<input type="{{ 'email' if field == 'email' else 'text' }}" id="feedback-{{ field }}" name="{{ field }}" value="{{ values[field] }}" maxlength="{{ limit }}" autocomplete="{{ {'name': 'name', 'country': 'country-name', 'email': 'email'}[field] }}" required {% if errors.get(field) %}aria-invalid="true" aria-describedby="error-{{ field }}"{% endif %}>{% endif %}
       {% if errors.get(field) %}<small class="feedback-error" id="error-{{ field }}">{{ errors[field] }}</small>{% endif %}</div>
       {% endfor %}
       </div>

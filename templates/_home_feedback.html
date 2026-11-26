@@ -7,9 +7,9 @@
   <form method="post" action="{{ request.full_path.rstrip('?') }}#reader-feedback" id="home-feedback-form">
     <p class="feedback-status" role="status" aria-live="polite">{% if received %}Thank you for your feedback! Your message has reached our team.{% elif errors %}Please check the highlighted fields below.{% endif %}</p>
     <div class="feedback-fields">
-    {% for field, label, limit in [('name', 'Name', 100), ('country', 'Country', 100), ('comment', 'Comment', 2000)] %}
+    {% for field, label, limit in [('name', 'Name', 100), ('country', 'Country', 100), ('email', 'Email address', 254), ('comment', 'Comment', 2000)] %}
       <div class="feedback-field feedback-{{ field }}"><label for="home-{{ field }}">{{ label }}</label>
-      {% if field == 'comment' %}<textarea id="home-{{ field }}" name="{{ field }}" rows="5" required maxlength="{{ limit }}" aria-describedby="home-error-{{ field }}" {% if errors.get(field) %}aria-invalid="true"{% endif %}>{{ values[field] }}</textarea>{% else %}<input id="home-{{ field }}" name="{{ field }}" value="{{ values[field] }}" autocomplete="{{ 'name' if field == 'name' else 'country-name' }}" required maxlength="{{ limit }}" aria-describedby="home-error-{{ field }}" {% if errors.get(field) %}aria-invalid="true"{% endif %}>{% endif %}
+      {% if field == 'comment' %}<textarea id="home-{{ field }}" name="{{ field }}" rows="5" required maxlength="{{ limit }}" aria-describedby="home-error-{{ field }}" {% if errors.get(field) %}aria-invalid="true"{% endif %}>{{ values[field] }}</textarea>{% else %}<input type="{{ 'email' if field == 'email' else 'text' }}" id="home-{{ field }}" name="{{ field }}" value="{{ values[field] }}" autocomplete="{{ {'name': 'name', 'country': 'country-name', 'email': 'email'}[field] }}" required maxlength="{{ limit }}" aria-describedby="home-error-{{ field }}" {% if errors.get(field) %}aria-invalid="true"{% endif %}>{% endif %}
       <small id="home-error-{{ field }}" class="feedback-error">{{ errors.get(field, '') }}</small></div>
     {% endfor %}
     </div>
@@ -27,7 +27,7 @@
     button.disabled = true;
     const status = form.querySelector('.feedback-status');
     status.textContent = 'Sending your feedback…';
-    for (const field of ['name', 'country', 'comment']) {
+    for (const field of ['name', 'country', 'email', 'comment']) {
       form.elements[field].removeAttribute('aria-invalid');
       document.getElementById('home-error-' + field).textContent = '';
     }

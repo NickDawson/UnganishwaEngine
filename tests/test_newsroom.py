@@ -193,7 +193,7 @@ class NewsroomTests(unittest.TestCase):
         self.assertEqual(invalid.status_code, 400)
         self.assertIn('value="Asha"', invalid.text)
         self.assertIn('aria-invalid="true"', invalid.text)
-        response = self.client.post('/feedback', data={'name': 'Web Reader', 'country': 'Kenya', 'comment': 'More local news please'})
+        response = self.client.post('/feedback', data={'name': 'Web Reader', 'country': 'Kenya', 'email': 'web@example.com', 'comment': 'More local news please'})
         self.assertEqual(response.status_code, 303)
         self.assertIn('Thank you for your feedback!', self.client.get(response.location).text)
         self.assertNotIn('Thank you for your feedback!', self.client.get('/feedback').text)
@@ -428,6 +428,9 @@ class NewsroomTests(unittest.TestCase):
             self.assertEqual(self.room.public_articles('tanzania', 'Uncategorized')[0]['status'], 'uncategorized')
         self.login()
         self.assertIn('Categorized by Ollama (AI)', self.client.get('/admin/news').text)
+        self.assertNotIn('Ollama (AI) configured', self.client.get('/admin/news').text)
+        with patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'ollama'}):
+            self.assertIn('Ollama (AI) configured', self.client.get('/admin/news').text)
 
     def test_editor_wins_during_classification(self):
         def edit(*args, **kwargs):
@@ -475,22 +478,43 @@ class NewsroomTests(unittest.TestCase):
         self.assertIn('language=Original', following)
         self.assertEqual(self.client.get(following).status_code, 200)
 
+    def test_feedback_notification_clears_after_opening_inbox(self):
+        self.login()
+        def has_dot(response):
+            return BeautifulSoup(response.text, 'html.parser').select_one('.feedback-unread-dot') is not None
+
+        self.client.get('/admin/feedback')
+        self.assertFalse(has_dot(self.client.get('/admin/news')))
+        payload = {'name': 'Badge Reader', 'country': 'Kenya', 'comment': 'Useful', 'email': 'invalid'}
+        invalid = self.client.post('/feedback', data=payload)
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn('Please enter a valid email address.', invalid.text)
+        payload['email'] = 'badge@example.com'
+        self.assertEqual(self.client.post('/feedback', data=payload).status_code, 303)
+        self.assertTrue(has_dot(self.client.get('/admin/news')))
+        result = self.client.get('/admin/feedback?q=badge%40example.com')
+        self.assertIn('badge@example.com', result.text)
+        self.assertTrue(has_dot(result))
+        self.assertFalse(has_dot(self.client.get('/admin/feedback')))
+        self.assertFalse(has_dot(self.client.get('/admin/news')))
+
     def test_inline_feedback_json_and_no_javascript(self):
         page = BeautifulSoup(self.client.get('/?language=Original').text, 'html.parser')
         form = page.select_one('#home-feedback-form')
         self.assertIsNotNone(form)
         self.assertEqual([label.get_text(strip=True) for label in form.select('label')],
-                         ['Name', 'Country', 'Comment'])
+                         ['Name', 'Country', 'Email address', 'Comment'])
         self.assertEqual(form.select_one('button').get_text(' ', strip=True), 'Send feedback ↗')
         invalid = self.client.post('/', data={'name': 'Asha', 'comment': 'Hello'},
                                    headers={'Accept': 'application/json'})
         self.assertEqual(invalid.status_code, 400)
         self.assertIn('country', invalid.json['errors'])
-        valid = self.client.post('/?page=2', data={'name': 'Inline Reader', 'country': 'Kenya', 'comment': 'Inline message'},
+        self.assertIn('email', invalid.json['errors'])
+        valid = self.client.post('/?page=2', data={'name': 'Inline Reader', 'country': 'Kenya', 'email': 'inline@example.com', 'comment': 'Inline message'},
                                  headers={'Accept': 'application/json'})
         self.assertTrue(valid.json['ok'])
         response = self.client.post('/news/tanzania/business?language=Original',
-            data={'name': 'Fallback Reader', 'country': 'Kenya', 'comment': 'Fallback message'}, follow_redirects=True)
+            data={'name': 'Fallback Reader', 'country': 'Kenya', 'email': 'fallback@example.com', 'comment': 'Fallback message'}, follow_redirects=True)
         self.assertIn('Thank you for your feedback!', response.text)
         self.assertIn('id="home-feedback-form"', response.text)
         invalid = self.client.post('/', data={'name': 'Retained name'})
