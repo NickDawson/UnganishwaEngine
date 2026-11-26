@@ -311,12 +311,10 @@ def record_visit(region, is_new_visitor, visitor_id):
     ''', (visitor_hash, now, now))
     day = now[:10]
     execute_sql(db, '''
-        INSERT INTO traffic_daily (day, page_views, unique_visitors)
-        VALUES (?, 1, ?)
-        ON CONFLICT (day) DO UPDATE SET
-            page_views = traffic_daily.page_views + 1,
-            unique_visitors = traffic_daily.unique_visitors + ?
-    ''', (day, 1 if is_new_visitor else 0, 0 if is_new_visitor else 0))
+        INSERT INTO traffic_daily (day, page_views)
+        VALUES (?, 1)
+        ON CONFLICT (day) DO UPDATE SET page_views = traffic_daily.page_views + 1
+    ''', (day,))
     origin = visitor_country(request)
     execute_sql(db, '''INSERT INTO visitor_country_daily (day, country_code, page_views)
         VALUES (?, ?, 1) ON CONFLICT (day, country_code) DO UPDATE SET
@@ -819,7 +817,7 @@ def analytics():
     ''').fetchone()
     daily_traffic = execute_sql(
         get_db(),
-        'SELECT COALESCE(unique_visitors, 0) AS unique_visitors FROM traffic_daily WHERE day = ?',
+        'SELECT COUNT(DISTINCT visitor_hash) AS unique_visitors FROM visitor_country_browsers WHERE day = ?',
         (datetime.now(timezone.utc).date().isoformat(),),
     ).fetchone()
     total_visits = traffic['page_views']
@@ -833,7 +831,7 @@ def analytics():
     leader = rows[0] if rows and rows[0]['visits'] else None
     return render_template('analytics.html', stats=rows, total_visits=total_visits,
                            total_visitors=total_visitors,
-                           daily_unique_visitors=daily_traffic['unique_visitors'] if daily_traffic else 0,
+                           daily_unique_visitors=daily_traffic['unique_visitors'],
                            leader=leader, origin_rows=origin_rows, origin_names=origin_names,
                            geo_configured=bool(os.environ.get('GEOIP_DATABASE_PATH') or
                                (os.environ.get('GEO_COUNTRY_HEADER') and os.environ.get('GEO_TRUSTED_PROXY_CIDRS'))),

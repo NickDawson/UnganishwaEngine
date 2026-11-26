@@ -365,6 +365,24 @@ class NewsroomTests(unittest.TestCase):
         finally:
             db.close()
 
+    def test_analytics_counts_returning_browsers_once_per_day(self):
+        self.login()
+        first = self.app.test_client()
+        second = self.app.test_client()
+        clock = datetime(2026, 1, 8, 10, tzinfo=timezone.utc)
+        with patch('app.datetime') as app_datetime:
+            app_datetime.now.return_value = clock - timedelta(days=1)
+            first.get('/')
+            app_datetime.now.return_value = clock
+            with patch('app.visitor_country', return_value='TZ'):
+                first.get('/')
+                second.get('/')
+            with patch('app.visitor_country', return_value='KE'):
+                first.get('/')
+            response = self.client.get('/analytics')
+        cards = BeautifulSoup(response.text, 'html.parser').select('.stats-grid .stat-card')
+        self.assertEqual(cards[2].strong.get_text(strip=True), '2')
+
     def test_auto_category_audit_manual_override_and_replay(self):
         with patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'local'}):
             self.article.update(title='Kocha ajiandaa kwa ligi', summary='Timu yafunga mabao matatu')
