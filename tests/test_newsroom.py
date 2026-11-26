@@ -403,6 +403,32 @@ class NewsroomTests(unittest.TestCase):
             classifier.assert_not_called()
         self.assertEqual(self.room.public_articles('tanzania', 'Health')[0]['topic'], 'Health')
 
+    def test_ollama_assigns_primary_topic_and_records_attribution(self):
+        with patch.dict(os.environ, {'NEWS_AUTO_CATEGORIZE': 'ollama'}), \
+                patch('categorization.requests.post') as post:
+            os.environ.pop('NEWS_CATEGORY_MODEL', None)
+            post.return_value.json.return_value = {
+                'done': True, 'done_reason': 'stop',
+                'message': {'content': '{"category":"Business","confidence":0.95,"reason":"Loans for farmers"}'},
+            }
+            self.article['title'] = 'Serikali yatangaza mikopo kwa wakulima'
+            story = self.seed()
+            self.assertEqual(story['topic'], 'Business')
+            self.assertEqual(story['categorized_by'], 'Ollama (AI)')
+            self.assertEqual(post.call_args.args[0], 'http://127.0.0.1:11434/api/chat')
+            self.assertFalse(post.call_args.kwargs['json']['stream'])
+            self.assertEqual(post.call_args.kwargs['json']['model'], 'qwen2.5:1.5b')
+
+            post.return_value.json.return_value['message']['content'] = (
+                '{"category":"Business","confidence":0.40,"reason":"Unclear"}'
+            )
+            self.article['link'] = 'https://example.com/news/unclear'
+            self.article['title'] = 'Taarifa mpya yatolewa'
+            self.room.ingest(self.source, [self.article])
+            self.assertEqual(self.room.public_articles('tanzania', 'Uncategorized')[0]['status'], 'uncategorized')
+        self.login()
+        self.assertIn('Categorized by Ollama (AI)', self.client.get('/admin/news').text)
+
     def test_editor_wins_during_classification(self):
         def edit(*args, **kwargs):
             with self.room.db() as db:

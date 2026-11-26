@@ -295,6 +295,29 @@ add processing time. Run collection through the existing news worker for feeds.
 An interrupted classification leaves the already saved story for manual review.
 Set `NEWS_AUTO_CATEGORIZE=off` to keep all new arrivals for manual categorization.
 
+### Local semantic classification with Ollama
+
+Install and start [Ollama on Linux](https://docs.ollama.com/linux) on the same
+host as UnganishwaEngine. Keep its API listening on loopback. For a first trial,
+download a local model with `ollama pull qwen2.5:1.5b`.
+
+Set the following environment variables on both the web and collection worker
+services and restart them:
+
+```ini
+NEWS_AUTO_CATEGORIZE=ollama
+NEWS_CATEGORY_MODEL=qwen2.5:1.5b
+```
+
+Unganishwa calls the local [Ollama chat API](https://docs.ollama.com/api/chat)
+at `127.0.0.1:11434` with the same category allowlist and confidence threshold
+as cloud AI mode. Incomplete or unavailable results stay in **Needs review**.
+The admin inbox identifies successful assignments as **Categorized by Ollama (AI)**,
+and the story's change history records the model's reason. The publisher's text
+and article eligibility rules remain unchanged. Ollama has a 3-second connect
+timeout and a 25-second read timeout per story, so test throughput on the
+production hardware before running a large archive batch.
+
 ### Reclassify the Uncategorized archive
 
 Local rules now recognize specific English/Swahili headline subjects even when

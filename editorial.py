@@ -15,7 +15,7 @@ import click
 from bs4 import BeautifulSoup
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
-from categorization import classify
+from categorization import classification_actor, classify
 
 ROLES = {'admin': 'Administrator', 'editor': 'Editor (categorize and moderate)',
          'categorizer': 'Categorizer (assign categories)'}
@@ -89,6 +89,7 @@ class Newsroom:
         with self.db() as db:
             rows = self.sql(db, 'SELECT id, title, summary, country, link FROM newsroom_articles WHERE ' + where +
                             ' ORDER BY created_at DESC, id LIMIT ?', tuple(params + [limit])).fetchall()
+        categorizer = classification_actor()
         assigned = remaining = 0
         for row in rows:
             topic, note = classify(row['title'], row['summary'], row['country'], self.categories, article_url=row['link'])
@@ -99,15 +100,15 @@ class Newsroom:
                 with self.db() as db:
                     timestamp = now()
                     cursor = self.sql(db, '''UPDATE newsroom_articles SET topic = ?, status = 'published',
-                        categorized_by = 'Automatic', published_at = ?, updated_at = ?, version = version + 1
+                        categorized_by = ?, published_at = ?, updated_at = ?, version = version + 1
                         WHERE id = ? AND ''' + where,
-                        tuple([topic, timestamp, timestamp, row['id']] + params))
+                        tuple([topic, categorizer, timestamp, timestamp, row['id']] + params))
                     if cursor.rowcount != 1:
                         continue
                     self.sql(db, '''INSERT INTO newsroom_audit
                         (id, article_id, actor, action, old_status, new_status, old_topic, new_topic, note, created_at)
-                        VALUES (?, ?, 'Automatic', 'auto_categorize', 'uncategorized', 'published', NULL, ?, ?, ?)''',
-                        (secrets.token_hex(16), row['id'], topic, 'Archive recheck. ' + note, timestamp))
+                        VALUES (?, ?, ?, 'auto_categorize', 'uncategorized', 'published', NULL, ?, ?, ?)''',
+                        (secrets.token_hex(16), row['id'], categorizer, topic, 'Archive recheck. ' + note, timestamp))
             assigned += 1
             click.echo(f'{topic}: {row["title"]}')
         click.echo(f'{"Assigned" if apply else "Would assign"}: {assigned}; needs review: {remaining}; scanned: {len(rows)}')
@@ -269,6 +270,7 @@ class Newsroom:
                         (secrets.token_hex(16), identity, actor or 'Feed: ' + source['source_name'], now()))
         # Save arrivals first and release database locks before any network request.
         # Duplicates are never classified again, including manually reset stories.
+        categorizer = classification_actor()
         for identity, title, summary, link in pending:
             topic, note = classify(title, summary, source['country'], self.categories, article_url=link)
             status = 'published' if topic else 'uncategorized'
@@ -278,13 +280,13 @@ class Newsroom:
                     SET topic = ?, status = ?, categorized_by = ?, published_at = ?,
                         updated_at = ?, version = version + ?
                     WHERE id = ? AND version = 1 AND status = 'uncategorized' AND topic IS NULL''',
-                    (topic, status, 'Automatic' if topic else None,
+                    (topic, status, categorizer if topic else None,
                      timestamp if topic else None, timestamp, int(bool(topic)), identity))
                 if cursor.rowcount == 1:
                     self.sql(db, '''INSERT INTO newsroom_audit
                         (id, article_id, actor, action, old_status, new_status, old_topic, new_topic, note, created_at)
-                        VALUES (?, ?, 'Automatic', ?, 'uncategorized', ?, NULL, ?, ?, ?)''',
-                        (secrets.token_hex(16), identity, 'auto_categorize' if topic else 'needs_review',
+                        VALUES (?, ?, ?, ?, 'uncategorized', ?, NULL, ?, ?, ?)''',
+                        (secrets.token_hex(16), identity, categorizer, 'auto_categorize' if topic else 'needs_review',
                          status, topic, note, timestamp))
         return inserted
 
